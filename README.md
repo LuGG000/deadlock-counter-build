@@ -10,7 +10,7 @@ go build -o deadlock-counter.exe .
 ./deadlock-counter.exe            # öffnet http://127.0.0.1:47871
 ```
 
-Optionen: `-port`, `-nobrowser`, `-no-icons` (schaltet jeden Netzzugriff ab), `-assets-api <url>`.
+Optionen: `-port`, `-nobrowser`, `-no-icons` (schaltet jeden Netzzugriff ab), `-no-update`, `-assets-api <url>`.
 Windows-Build aus Linux: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w"`.
 
 ## Funktionen
@@ -37,3 +37,12 @@ Helden abgeleitetes Build (im Tool markiert).
 ```
 go test ./...
 ```
+
+## Updates und Releases
+
+Beim Start prüft die exe das neueste GitHub-Release. Ist es neuer als die eigene Version, lädt sie `deadlock-counter.exe`
+herunter (SHA-256-Prüfung), ersetzt sich selbst und startet neu. Fehler werden nur geloggt. Entwicklungs-Builds (`version = "dev"`)
+und `-no-icons` / `-no-update` suchen nicht.
+
+Release erstellen: Tag `vX.Y.Z` pushen. Der Workflow `.github/workflows/release.yml` testet, baut die Windows-exe mit
+eingebetteter Version und legt das Release an.

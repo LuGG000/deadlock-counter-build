@@ -1059,10 +1059,14 @@ func main() {
 	port := flag.Int("port", 47871, "Port (bei Belegung wird automatisch ein freier gewaehlt)")
 	noBrowser := flag.Bool("nobrowser", false, "Browser nicht automatisch oeffnen")
 	noIcons := flag.Bool("no-icons", false, "keine Icons herunterladen")
+	noUpdate := flag.Bool("no-update", false, "nicht nach Programm-Updates suchen")
 	assetsAPI := flag.String("assets-api", "https://api.deadlock-api.com", "Basis-URL der Asset-API")
 	flag.Parse()
 
 	netEnabled = !*noIcons
+	if netEnabled && !*noUpdate {
+		selfUpdate()
+	}
 	loadSettings()
 	t0 := time.Now()
 	d, err := loadData()
