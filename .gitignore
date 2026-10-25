@@ -13,3 +13,4 @@ _to_delete/
 # Development
 *.log
 .DS_Store
+installer/Output/

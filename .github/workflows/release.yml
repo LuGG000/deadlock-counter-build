@@ -24,3 +24,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" deadlock-counter.exe --title "$GITHUB_REF_NAME" --generate-notes
+
+  installer:
+    needs: release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure Inno Setup
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+      - name: Build installer
+        run: |
+          $version = $env:GITHUB_REF_NAME.TrimStart('v')
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=$version" installer\installer.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$env:GITHUB_REF_NAME" installer\Output\deadlock-counter-setup.exe --clobber

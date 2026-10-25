@@ -28,6 +28,7 @@ Flags: `-port`, `-nobrowser`, `-no-icons` (disables all network access, includin
 - **Skills (`skills.go`, `abil_gen.go`)**: `heroAbil` is generated static data (ability IDs and default skill order per hero). `skills.go` fetches real skill orders from match data (Wilson score) into `skillorders*.json`.
 - **Icons (`icons.go`)**: downloads hero/item icons once into `icons/` next to the exe; local files with normalized names (`norm`) are also picked up.
 - **Self-update (`update.go`)**: `selfUpdate` runs first in `main()`; if the latest GitHub release tag is newer than `version` (set via `-ldflags "-X main.version=vX.Y.Z"`, `dev` never updates) it downloads the `deadlock-counter.exe` asset, verifies the digest, swaps the exe (old one renamed to `.old`) and restarts. Releases are built by `.github/workflows/release.yml` on `v*` tags.
+- **Installer (`installer/installer.iss`)**: Inno Setup script built by the `installer` job in the release workflow. It downloads the latest `deadlock-counter.exe` at install time and installs per user into `%LOCALAPPDATA%ProgramsDeadlockCounter` (must stay user-writable, the updater and runtime files need it).
 - **Frontend**: single file `ui.html`, embedded; talks to `/api/*` endpoints registered in `main()`.
 - **Runtime files** (`defaults.json`, `settings.json`, `icons/`, `*_cache.json`, `skillorders*.json`) live next to the exe and are git-ignored.
 

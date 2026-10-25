@@ -3,7 +3,14 @@
 Local tool (Go, standard library only) for Deadlock: pick your hero and the enemy team, and the tool adjusts your
 default build with a few counter items and shows the purchase order. The build can be exported as an in-game import string.
 
-## Run
+## Install
+
+Download `deadlock-counter-setup.exe` from the [latest release](https://github.com/LuGG000/deadlock-counter-build/releases/latest) and run it.
+The installer downloads the newest `deadlock-counter.exe`, installs it per user (no admin rights needed) and adds a Start menu entry.
+The app then keeps itself up to date. Neither Go nor any other runtime is required. The files are unsigned, so Windows SmartScreen may
+show a warning: click "More info" and then "Run anyway".
+
+## Run (from source)
 
 ```
 go build -o deadlock-counter.exe .
