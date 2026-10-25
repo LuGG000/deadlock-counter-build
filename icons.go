@@ -221,7 +221,7 @@ func (ic *Icons) fetchKind(kind string) ([]map[string]any, error) {
 		seen[u] = true
 		list, err := ic.fetchList(u)
 		if err == nil && len(list) > 0 {
-			log.Printf("Icons: %s von %s", kind, u)
+			log.Printf("Icons: %s from %s", kind, u)
 			return list, nil
 		}
 		if err == nil {
