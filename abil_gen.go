@@ -1,0 +1,53 @@
+package main
+
+// Generiert: Signature-Ability-IDs (Slot 1-4) und Standard-Skill-Reihenfolge (Prioritaet als Slot-Nummern) je Held.
+var heroAbil = map[string]struct {
+	ID    [4]uint32
+	Order [4]int
+	Names [4]string
+}{
+	"abrams":       {[4]uint32{4072270083, 2824119765, 715762406, 509856396}, [4]int{1, 2, 3, 4}, [4]string{"Siphon Life", "Shoulder Charge", "Infernal Resilience", "Seismic Impact"}},
+	"apollo":       {[4]uint32{725153709, 2006773718, 147493976, 494112189}, [4]int{1, 2, 3, 4}, [4]string{"Disengaging Sigil", "Riposte", "Flawless Advance", "Itani Lo Sahn"}},
+	"baba":         {[4]uint32{1282689113, 3122124161, 2003165630, 299875845}, [4]int{1, 2, 3, 4}, [4]string{"Threadsap", "Granny Long Legs", "Baba's Brew", "Feed The Birds"}},
+	"bebop":        {[4]uint32{3089858203, 2521902222, 1928108461, 3832675871}, [4]int{1, 2, 3, 4}, [4]string{"Exploding Uppercut", "Sticky Bomb", "Grapple Arm", "Hyper Beam"}},
+	"billy":        {[4]uint32{1841661392, 1792773251, 3296031213, 3762861984}, [4]int{1, 2, 3, 4}, [4]string{"Bashdown", "Rising Ram", "Blasted", "Chain Gang"}},
+	"calico":       {[4]uint32{4131517918, 1426567660, 1009029159, 2054144742}, [4]int{1, 2, 3, 4}, [4]string{"Gloom Bombs", "Leaping Slash", "Ava", "Return to Shadows"}},
+	"celeste":      {[4]uint32{3443575800, 1950738949, 1011349580, 2590796390}, [4]int{1, 2, 3, 4}, [4]string{"Light Eater", "Dazzling Trick", "Radiant Daggers", "Shining Wonder"}},
+	"deadmandanny": {[4]uint32{2603013853, 1904698842, 374042410, 1026127931}, [4]int{1, 2, 3, 4}, [4]string{"Strix Salvo", "Chimera Mk1", "Jettison Fuel", "Close The Deal"}},
+	"drifter":      {[4]uint32{3120550633, 1264175662, 1033019133, 1168182161}, [4]int{1, 2, 3, 4}, [4]string{"Rend", "Stalker's Mark", "Bloodscent", "Eternal Night"}},
+	"dynamo":       {[4]uint32{3760705623, 2031714424, 492030745, 249410288}, [4]int{1, 2, 3, 4}, [4]string{"Kinetic Pulse", "Quantum Entanglement", "Rejuvenating Aurora", "Singularity"}},
+	"graves":       {[4]uint32{3214055642, 2001589780, 629925354, 4110547059}, [4]int{1, 2, 3, 4}, [4]string{"Jar of Dead", "Grasping Hands", "Essence Theft", "Borrowed Decree"}},
+	"greytalon":    {[4]uint32{548943648, 3452399392, 512733154, 3242902780}, [4]int{1, 2, 3, 4}, [4]string{"Charged Shot", "Rain of Arrows", "Spirit Snare", "Guided Owl"}},
+	"haze":         {[4]uint32{2948410412, 2414191464, 1080948381, 731943444}, [4]int{1, 2, 3, 4}, [4]string{"Sleep Dagger", "Smoke Bomb", "Fixation", "Bullet Dance"}},
+	"holliday":     {[4]uint32{1235098866, 2240607294, 4179229681, 3190606822}, [4]int{1, 2, 3, 4}, [4]string{"Powder Keg", "Bounce Pad", "Crackshot", "Spirit Lasso"}},
+	"infernus":     {[4]uint32{491391007, 3516947824, 1593133799, 1142270357}, [4]int{1, 2, 3, 4}, [4]string{"Napalm", "Flame Dash", "Afterburn", "Concussive Combustion"}},
+	"ivy":          {[4]uint32{4111222521, 1531378655, 3642273386, 1247583368}, [4]int{1, 2, 3, 4}, [4]string{"Entangling Thorns", "Kudzu Connection", "Stone Form", "Air Drop"}},
+	"kelvin":       {[4]uint32{18921423, 1963397252, 2351041382, 3826390464}, [4]int{1, 2, 3, 4}, [4]string{"Frost Grenade", "Ice Path", "Arctic Beam", "Frozen Shelter"}},
+	"ladygeist":    {[4]uint32{715325746, 218284420, 3230530872, 1307289689}, [4]int{1, 2, 3, 4}, [4]string{"Essence Bomb", "Life Drain", "Malice", "Soul Exchange"}},
+	"lash":         {[4]uint32{3561817145, 2670099061, 519124136, 397010810}, [4]int{1, 2, 3, 4}, [4]string{"Ground Strike", "Grapple", "Flog", "Death Slam"}},
+	"mcginnis":     {[4]uint32{3133377790, 2142734020, 1725685134, 3503044146}, [4]int{1, 2, 3, 4}, [4]string{"Mini Turret", "Medicinal Specter", "Spectral Wall", "Heavy Barrage"}},
+	"mina":         {[4]uint32{193508101, 2398133749, 1233782561, 3379486147}, [4]int{1, 2, 3, 4}, [4]string{"Rake", "Sanguine Retreat", "Love Bites", "Nox Nostra"}},
+	"mirage":       {[4]uint32{3733594387, 1336069669, 2221949202, 2604653402}, [4]int{1, 2, 3, 4}, [4]string{"Fire Scarabs", "Dust Devil", "Djinn's Mark", "Traveler"}},
+	"mokrill":      {[4]uint32{1454278799, 2406758797, 1914797280, 1917840730}, [4]int{1, 2, 3, 4}, [4]string{"Scorn", "Burrow", "Sand Blast", "Combo"}},
+	"nurseharrow":  {[4]uint32{267712790, 3621314027, 683490631, 3427093887}, [4]int{1, 2, 3, 4}, [4]string{"Leech Therapy", "Wretched Vapors", "Healing Needles", "Lurking Terrors"}},
+	"paige":        {[4]uint32{604448162, 3553292912, 3054993162, 1841901343}, [4]int{1, 2, 3, 4}, [4]string{"Bookwyrm", "Plot Armor", "Captivating Read", "Rallying Charge"}},
+	"paradox":      {[4]uint32{58655583, 1366719170, 1128670012, 2917891787}, [4]int{1, 2, 3, 4}, [4]string{"Pulse Grenade", "Time Wall", "Kinetic Carbine", "Paradoxical Swap"}},
+	"pocket":       {[4]uint32{938149308, 1976701714, 3747867012, 2954330093}, [4]int{1, 2, 3, 4}, [4]string{"Barrage", "Flying Cloak", "Enchanter's Satchel", "Affliction"}},
+	"ratking":      {[4]uint32{3002308408, 3681399397, 690412829, 1627989937}, [4]int{1, 2, 3, 4}, [4]string{"Scrap Grenade", "Rat Swarm", "Royal Pestments", "Rule, Ratannia!"}},
+	"rem":          {[4]uint32{3692321247, 1568845221, 536278136, 2396527575}, [4]int{1, 2, 3, 4}, [4]string{"Pillow Toss", "Tag Along", "Lil Helpers", "Naptime"}},
+	"seven":        {[4]uint32{1065103387, 1074714947, 539192269, 2061574352}, [4]int{1, 2, 3, 4}, [4]string{"Lightning Ball", "Static Charge", "Power Surge", "Storm Cloud"}},
+	"shiv":         {[4]uint32{2460791803, 1458044103, 1537272748, 1835738020}, [4]int{1, 2, 3, 4}, [4]string{"Serrated Knives", "Slice and Dice", "Bloodletting", "Killing Blow"}},
+	"silver":       {[4]uint32{1385849824, 2717130900, 3983754897, 515791019}, [4]int{1, 2, 3, 4}, [4]string{"Slam Fire", "Boot Kick", "Entangling Bola", "Lycan Curse"}},
+	"sinclair":     {[4]uint32{3156905386, 12456023, 2142213586, 191022746}, [4]int{1, 2, 3, 4}, [4]string{"Vexing Bolt", "Spectral Assistant", "Rabbit Hex", "Audience Participation"}},
+	"solomon":      {[4]uint32{4011110259, 4180486641, 2424652896, 1389230689}, [4]int{1, 2, 3, 4}, [4]string{"Setup Bishop", "Kingside Knight", "Rook Battery", "Develop Queen"}},
+	"thedoorman":   {[4]uint32{103496908, 109766091, 1719512318, 1703045691}, [4]int{1, 2, 3, 4}, [4]string{"Call Bell", "Doorway", "Luggage Cart", "Hotel Guest"}},
+	"venator":      {[4]uint32{911307831, 1764146857, 11154161, 2918874166}, [4]int{1, 2, 3, 4}, [4]string{"Consecrating Grenade", "Gutshot", "Hex-Lined Snap Trap", "Ira Domini"}},
+	"victor":       {[4]uint32{2043074967, 3727084744, 1472593493, 3493884851}, [4]int{1, 2, 3, 4}, [4]string{"Pain Battery", "Jumpstart", "Aura of Suffering", "Shocking Reanimation"}},
+	"vindicta":     {[4]uint32{537527508, 1796564033, 2048438176, 775377419}, [4]int{1, 2, 3, 4}, [4]string{"Stake", "Flight", "Crow Familiar", "Assassinate"}},
+	"violet":       {[4]uint32{836615329, 3389503777, 3612874202, 2516700978}, [4]int{1, 2, 3, 4}, [4]string{"Living Ink", "Flow State", "Still Life", "Abstract Landscape"}},
+	"viscous":      {[4]uint32{3247040238, 3788152387, 1020817390, 4206531918}, [4]int{1, 2, 3, 4}, [4]string{"Splatter", "The Cube", "Puddle Punch", "Goo Ball"}},
+	"vyper":        {[4]uint32{645773760, 3428732129, 1469918191, 1594727071}, [4]int{1, 2, 3, 4}, [4]string{"Screwjab Dagger", "Lethal Venom", "Slither", "Petrifying Bola"}},
+	"warden":       {[4]uint32{2656490109, 2751689917, 1656913918, 2702908623}, [4]int{1, 2, 3, 4}, [4]string{"Alchemical Flask", "Willpower", "Binding Word", "Last Stand"}},
+	"wraith":       {[4]uint32{1999680326, 4147641675, 1842576017, 2981692841}, [4]int{1, 2, 3, 4}, [4]string{"Card Trick", "Project Mind", "Full Auto", "Telekinesis"}},
+	"yamato":       {[4]uint32{3255651252, 2566573207, 2366960452, 3319782965}, [4]int{1, 2, 3, 4}, [4]string{"Power Slash", "Flying Slash", "Crimson Slash", "Shadow Transformation"}},
+}

@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Deadlock Counter-Build</title>
+<style>
+:root{--bg:#121418;--card:#1b1e24;--line:#2a2f38;--tx:#e6e8ec;--mu:#8b93a1;--ac:#4aa3ff;--W:#e8963a;--V:#5cc16a;--S:#a36bf0;--bad:#ef5b5b;--ok:#5cc16a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,Segoe UI,Roboto,sans-serif}
+header{display:flex;gap:16px;align-items:baseline;padding:10px 16px;border-bottom:1px solid var(--line)}
+header h1{font-size:16px;margin:0}
+header span{color:var(--mu);font-size:12px}
+main{display:grid;grid-template-columns:minmax(520px,1.1fr) minmax(380px,1fr);gap:12px;padding:12px;align-items:start}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);margin:0 0 8px}
+button{font:inherit;color:var(--tx);background:#262b34;border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover{border-color:var(--ac)}
+input,select{font:inherit;color:var(--tx);background:#12151a;border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+input:focus{outline:1px solid var(--ac)}
+#slots{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch;margin-bottom:8px}
+.slot{position:relative;min-width:92px;padding:6px 8px;border:1px dashed var(--line);border-radius:6px;cursor:pointer;background:#12151a}
+.slot small{display:block;font-size:10px;color:var(--mu)}
+.slot b{font-weight:600}
+.slot.on{border:1px solid var(--ac);background:#16202c}
+.slot.me{border-style:solid}
+.slot button{position:absolute;top:2px;padding:0 5px;font-size:11px;line-height:16px}
+.slot .x{right:2px}.slot .lane{right:24px}
+.slot .lane.on{background:#4a2b2b;border-color:var(--bad)}
+.vs{align-self:center;color:var(--mu)}
+#hsearch{width:100%;margin-bottom:8px}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:4px}
+.hero{text-align:left;padding:4px 7px;font-size:13px;border-left:3px solid var(--line)}
+.role-Brawler{border-left-color:#d9634a}.role-Assassin{border-left-color:#c9b037}.role-Marksman{border-left-color:#4aa3ff}.role-Mystic{border-left-color:#a36bf0}
+.hero.me{background:#1c3350;border-color:var(--ac)}
+.hero.en{background:#3a2326;border-color:var(--bad)}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.bar .st{color:var(--mu);font-size:12px}
+.bar .dirty{color:#f1c24f}
+.zone{margin-bottom:10px}
+.zone h3{font-size:12px;margin:0 0 4px;color:var(--mu);font-weight:600}
+ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+li{display:flex;align-items:center;gap:6px;padding:2px 4px;border-radius:5px}
+li:hover{background:#222731}
+li .n{width:18px;color:var(--mu);font-size:11px;text-align:right}
+li.prot{box-shadow:inset 2px 0 0 #3a4352}
+li.out{background:#2b2420}
+li .btns{margin-left:auto;display:flex;gap:2px;opacity:.55}
+li:hover .btns{opacity:1}
+li .btns button{padding:0 6px;font-size:12px}
+li em{font-style:normal;color:var(--ok);font-size:12px}
+.it{border-left:3px solid #555;padding:1px 6px;background:#12151a;border-radius:4px}
+.it small{color:var(--mu)}
+.ic{width:22px;height:22px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:6px;background:#0c0e11}
+.ic.h{width:34px;height:34px;border-radius:6px;margin-right:0}
+.slot .ic.h{width:30px;height:30px}
+.slot.hasic{padding-left:46px;min-height:46px}
+.slot.hasic .ic{position:absolute;left:8px;top:8px}
+.hero{display:flex;align-items:center;gap:7px}
+.dd .ic{margin-right:6px}
+#icst{margin-left:auto}
+#icst button{padding:0 8px;font-size:12px;margin-left:6px}
+.c-W{border-left-color:var(--W)}.c-V{border-left-color:var(--V)}.c-S{border-left-color:var(--S)}
+.add{position:relative;margin-top:3px}
+.add input{width:100%}
+.dd{position:absolute;z-index:5;left:0;right:0;max-height:260px;overflow:auto;background:#181c22;border:1px solid var(--ac);border-radius:6px}
+.dd div{padding:4px 8px;cursor:pointer;display:flex;gap:8px}
+.dd div:hover,.dd div.hl{background:#243041}
+.dd small{color:var(--mu);margin-left:auto}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pill{background:#12151a;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px}
+.pill b{color:var(--ac)}
+.swap{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-bottom:8px;background:#12151a}
+.swap .sw{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.swap .rem{text-decoration:line-through;color:var(--mu)}
+.swap .add2{color:var(--ok);font-weight:600}
+.swap p{margin:4px 0 0;color:var(--mu);font-size:12.5px}
+.swap .note{color:#f1c24f}
+.hint{color:var(--mu)}
+.warn{color:#f1c24f;font-size:12px}
+.kv{color:var(--mu);font-size:12.5px}
+.seq{font-size:13px;color:var(--tx)}
+.seq .new{color:var(--ok);font-weight:600}
+ul.plain{margin:0 0 8px;padding-left:18px;color:var(--mu);font-size:12.5px}
+
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button{padding:4px 12px}
+.tabs button.on{background:var(--ac);color:#000;border-color:var(--ac)}
+.ord{display:flex;flex-wrap:wrap;gap:6px;align-items:stretch}
+.ord .z{flex-basis:100%;margin:8px 0 0;color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.ord .st{position:relative;border:1px solid var(--line);border-left-width:3px;border-radius:7px;background:#12151a;padding:5px 8px 5px 24px;font-size:13px;display:flex;align-items:center;gap:4px}
+.ord .st .no{position:absolute;left:5px;top:3px;font-size:10px;color:var(--mu)}
+.ord .st.nw{border-color:var(--ok);background:#13241a}
+.ord .st.nw em{display:block;font-size:10.5px;color:var(--mu);font-style:normal;text-decoration:line-through}
+.ord .st small{color:var(--mu);display:block}
+
+/* ===== Redesign ===== */
+:root{--bg:#0e1116;--card:#171b22;--line:#262c36;--ac:#5aa9ff}
+body{background:radial-gradient(1200px 500px at 20% -10%,#17233a 0,transparent 60%),var(--bg)}
+header{padding:14px 20px;background:#11151c;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+header h1{font-size:18px;letter-spacing:.02em}
+.card{border-radius:12px;padding:14px 16px;box-shadow:0 2px 14px rgba(0,0,0,.25)}
+h2{font-size:11.5px;letter-spacing:.09em}
+button{transition:background .12s,border-color .12s}
+button:hover{background:#2e3541}
+button.primary{background:var(--ac);color:#06121f;border-color:var(--ac);font-weight:600;padding:7px 14px}
+button.primary:hover{background:#7cbcff}
+#slots{gap:8px}
+.slot{min-width:116px;padding:8px 10px;border-radius:10px;border:1.5px dashed #343b48}
+.slot.hasic{padding-left:54px;min-height:54px}
+.slot .ic.h,.slot.hasic .ic{width:36px;height:36px;left:9px;top:9px}
+.slot.on{border:1.5px solid var(--ac);background:#14253a;box-shadow:0 0 0 3px rgba(90,169,255,.15)}
+.slot b{font-size:14px}
+#grid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.hero{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-height:92px;padding:10px 4px 8px;text-align:center;border:1px solid var(--line);border-top:3px solid var(--line);border-left:1px solid var(--line);border-radius:10px;background:#12161c;cursor:pointer}
+.hero *{pointer-events:none}
+.hero .ic.h{width:50px;height:50px;border-radius:10px;margin:0}
+.hero span{font-size:12px;line-height:1.15;font-weight:600}
+.hero:hover{background:#1d2430;border-color:#3a4658;transform:translateY(-1px)}
+.role-Brawler{border-top-color:#d9634a !important}.role-Assassin{border-top-color:#c9b037 !important}.role-Marksman{border-top-color:#4aa3ff !important}.role-Mystic{border-top-color:#a36bf0 !important}
+.hero.me{background:#17365a;border-color:var(--ac)}
+.hero.en{background:#3b2227;border-color:var(--bad)}
+.it{border-radius:6px;padding:2px 8px}
+.ord .st{border-radius:9px;padding:7px 10px 7px 26px;font-size:13.5px}
+.swap{border-radius:10px}
+
+.stepn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--ac);color:#06121f;font-size:12px;font-weight:700;margin-right:4px}
+details.card>summary{cursor:pointer;list-style:none}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::before{content:"▸ ";color:var(--mu)}
+details.card[open]>summary::before{content:"▾ "}
+details.card[open]>summary{margin-bottom:10px}
+</style>
+</head>
+<body>
+<header><h1>Deadlock Counter-Build</h1><span id="meta"></span><span id="ms"></span><span id="icst"></span><span id="syncst" class="kv" style="margin-left:12px"></span></header>
+<main>
+<section>
+  <div class="card">
+    <h2><span class="stepn">1</span> Dein Held &amp; <span class="stepn">2</span> Gegnerteam</h2>
+    <div style="float:right"><button id="bReset" title="Held und Gegnerteam zurücksetzen">↺ Matchup zurücksetzen</button></div>
+    <p class="hint" style="margin:0 0 10px">Slot anklicken, dann Held in der Liste wählen. Rechtsklick auf einen Slot entfernt den Helden. ⚔ markiert den direkten Lane-Gegner.</p>
+    <div id="slots"></div>
+    <input id="hsearch" placeholder="Held suchen…" autocomplete="off">
+    <div id="grid"></div>
+  </div>
+  <details class="card" id="editor">
+    <summary><h2 style="display:inline">Dein Standard-Build bearbeiten <span class="kv">(optional)</span></h2></summary>
+    <div id="derivednote" class="warn" style="margin:8px 0"></div>
+    <div class="bar" id="bar"></div>
+    <div id="zones"></div>
+  </details>
+</section>
+<section><div class="card" id="result"><p class="hint">Wähle links deinen Helden und das Gegnerteam.</p></div></section>
+</main>
+<script>
+const S={tab:'or',data:null,items:{},me:null,enemies:[null,null,null,null,null,null],lane:null,active:'me',
+  build:{early:[],core:[],late:[]},swaps:3,timer:null,repl:{},msg:'',last:null,
+  ic:{heroes:{},items:{},running:false,total:0,done:0,failed:0,err:'',heroTotal:0,itemTotal:0,enabled:true}};
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clone=o=>JSON.parse(JSON.stringify(o));
+async function api(url,method,body){
+  const r=await fetch(url,{method:method||'GET',headers:{'Content-Type':'application/json','X-DL':'1'},body:body?JSON.stringify(body):undefined});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+const ZN={early:'Early / Lane-Phase',core:'Core (Kaufreihenfolge)',late:'Late-Optionen'};
+
+function hic(n,cls){const p=S.ic.heroes[n];return p?`<img class="ic ${cls||''}" src="/icons/${esc(p)}" alt="" onerror="this.remove()">`:'';}
+function iic(n){const p=S.ic.items[n];return p?`<img class="ic" src="/icons/${esc(p)}" alt="" loading="lazy" onerror="this.remove()">`:'';}
+function chip(name){
+  const it=S.items[name];
+  if(!it) return `<span class="it c-X" title="unbekanntes Item">${esc(name)}</span>`;
+  return `<span class="it c-${it.cat[0]}" title="${esc(it.tip)}">${iic(name)}${esc(name)} <small>T${it.tier} · ${it.cost}</small></span>`;
+}
+function baseBuild(){
+  const h=S.data.heroes.find(x=>x.name===S.me); if(!h) return {early:[],core:[],late:[]};
+  return clone(S.data.defaults[S.me]||h.catalog);
+}
+function isSaved(){return !!(S.me&&S.data.defaults[S.me]);}
+function dirty(){return JSON.stringify(S.build)!==JSON.stringify(baseBuild());}
+
+/* ---------- Team / Heldenwahl ---------- */
+function renderSlots(){
+  let h=`<div class="slot me ${S.active==='me'?'on':''} ${S.me&&S.ic.heroes[S.me]?'hasic':''}" data-s="me">${S.me?hic(S.me,'h'):''}<small>ICH</small><b>${esc(S.me||'– wählen –')}</b></div><span class="vs">vs</span>`;
+  S.enemies.forEach((n,i)=>{
+    h+=`<div class="slot ${S.active===i?'on':''} ${n&&S.ic.heroes[n]?'hasic':''}" data-s="${i}">${n?hic(n,'h'):''}<small>GEGNER ${i+1}</small><b>${n?esc(n):'–'}</b>`+
+       (n?`<button class="lane ${S.lane===n?'on':''}" data-lane="${i}" title="Direkter Lane-Gegner (zählt mehr)">⚔</button><button class="x" data-clear="${i}" title="entfernen">×</button>`:'')+`</div>`;
+  });
+  $('#slots').innerHTML=h;
+}
+function renderGrid(){
+  const q=$('#hsearch').value.trim().toLowerCase();
+  $('#grid').innerHTML=S.data.heroes.filter(h=>!q||h.name.toLowerCase().includes(q)).map(h=>{
+    const c=h.name===S.me?' me':(S.enemies.includes(h.name)?' en':'');
+    return `<button class="hero role-${esc(h.role)}${c}" data-h="${esc(h.name)}" title="${esc(h.role)} · W/V/S ${h.shares.join('/')}%">${hic(h.name,'h')}<span>${esc(h.name)}</span></button>`;
+  }).join('');
+}
+function nextEmpty(){const i=S.enemies.findIndex(x=>!x);return i<0?S.active:i;}
+function pick(name){
+  if(S.active==='me'){S.me=name;S.build=baseBuild();S.msg='';S.active=nextEmpty();renderLists();renderBar();}
+  else{
+    if(S.enemies.includes(name)) return;
+    const old=S.enemies[S.active]; if(old&&old===S.lane) S.lane=null;
+    S.enemies[S.active]=name; S.active=nextEmpty();
+  }
+  renderSlots();renderGrid();schedule();
+}
+
+/* ---------- Build-Editor ---------- */
+function initZones(){
+  $('#zones').innerHTML=['early','core','late'].map(z=>`<div class="zone" data-z="${z}"><h3>${ZN[z]}${z==='core'?' <span style="font-weight:400">(erste 8 werden nur bei starkem Grund getauscht)</span>':''}</h3><ol></ol>
+  <div class="add"><input data-z="${z}" placeholder="+ Item hinzufügen (tippen oder klicken)…" autocomplete="off"><div class="dd" hidden></div></div></div>`).join('');
+}
+function renderLists(){
+  for(const z of ['early','core','late']){
+    const ol=document.querySelector(`.zone[data-z="${z}"] ol`);
+    ol.innerHTML=S.build[z].map((n,i)=>{
+      const r=S.repl[n]&&z!=='early';
+      return `<li class="${z==='core'&&i<8?'prot':''} ${r?'out':''}"><span class="n">${i+1}</span>${chip(n)}${r?`<em>→ ${esc(S.repl[n])}</em>`:''}
+      <span class="btns"><button data-a="up" data-z="${z}" data-i="${i}">↑</button><button data-a="dn" data-z="${z}" data-i="${i}">↓</button><button data-a="del" data-z="${z}" data-i="${i}">×</button></span></li>`;
+    }).join('')||'<li class="hint">– leer –</li>';
+  }
+}
+function renderBar(){
+  {const h=S.me&&S.data.heroes.find(x=>x.name===S.me);const el=$('#derivednote');if(el)el.textContent=h&&h.derived?'Für diesen Helden gibt es keine Tracklock-Daten. Das Build wurde aus ähnlichen Helden abgeleitet – bitte prüfen und als Default speichern.':'';}
+  const st=S.me?(isSaved()?'Basis: dein gespeicherter Default':'Basis: Tracklock-Katalog'):'';
+  $('#bar').innerHTML=`<button id="bLoad">Default laden</button><button id="bSave">Als Default speichern</button>
+   ${isSaved()?'<button id="bDel">Gespeicherten Default löschen</button>':''}
+   <label class="st">Max. Swaps <select id="swaps">${[1,2,3,4,5,6].map(n=>`<option ${n===S.swaps?'selected':''}>${n}</option>`).join('')}</select></label>
+   <span class="st">${esc(st)} ${S.me&&dirty()?'<span class="dirty">· geändert</span>':''} ${esc(S.msg)}</span>`;
+}
+function addItem(z,name){
+  if(!S.me) return;
+  S.build[z].push(name);S.msg='';renderLists();renderBar();schedule();
+}
+function showDD(input){
+  const z=input.dataset.z,q=input.value.trim().toLowerCase(),dd=input.nextElementSibling;
+  const list=S.data.items.filter(it=>!q||it.name.toLowerCase().includes(q));
+  dd.innerHTML=list.map((it,i)=>`<div class="${i===0&&q?'hl':''}" data-add="${esc(it.name)}"><span class="it c-${it.cat[0]}">${iic(it.name)}${esc(it.name)}</span><small>T${it.tier} · ${it.cost}${it.active?' · aktiv':''}</small></div>`).join('')||'<div>nichts gefunden</div>';
+  dd.hidden=false;
+}
+
+/* ---------- Ergebnis ---------- */
+function pill(label,arr){return `<span class="pill" title="${esc(arr.join(', ')||'-')}">${label} <b>${arr.length}</b></span>`;}
+function renderAnalysis(r){
+  const P=r.profile;let h='';
+  h+=`<h2>Gegner-Profil</h2><div class="pills">${pill('Gun-Carries',P.gun)}${pill('Spirit-Burst',P.spirit)}${pill('CC',P.cc)}${pill('Heilung',P.heal)}${pill('Tanks',P.tank)}${pill('Mobil',P.mobile)}${pill('Slow',P.slow)}</div>`;
+  if(r.tips.length) h+=`<ul class="plain">${r.tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`;
+  if(r.ranking.length){
+    h+=`<h2>Beste Counter-Items (kein Build hinterlegt – füge links Items hinzu)</h2>`+r.ranking.map(x=>`<div class="swap"><div class="sw">${chip(x.item)}<em class="kv">Score ${x.score}</em></div><p>${esc(x.why)}</p></div>`).join('');
+  }else{
+    h+=`<h2>Empfohlene Swaps</h2>`;
+    h+=r.swaps.length?r.swaps.map(s=>`<div class="swap"><div class="sw"><span class="rem">${chip(s.remove)}</span><b>→</b><span class="add2">${chip(s.add)}</span><em class="kv">${esc(s.zone)} · Score ${s.score}</em></div><p>weil: ${esc(s.why)}</p>${s.notes.map(n=>`<p class="note">${esc(n)}</p>`).join('')}</div>`).join(''):'<p class="hint">Keine Swaps nötig – dein Build passt zu diesem Matchup.</p>';
+    if(r.fallback.length) h+=`<h2>Rückfall-Optionen</h2>`+r.fallback.map(x=>`<div class="kv">${chip(x.item)} Score ${x.score} – ${esc(x.why)}</div>`).join('');
+    const seq=(arr)=>arr.map(n=>S.repl[n]?`<span class="new">${esc(S.repl[n])}</span>`:esc(n)).join(' › ');
+    h+=`<h2 style="margin-top:12px">Angepasstes Build</h2><div class="seq"><p><b>Early:</b> ${S.build.early.map(esc).join(', ')||'–'}</p><p><b>Core:</b> ${seq(S.build.core)||'–'}</p><p><b>Late:</b> ${seq(S.build.late)||'–'}</p></div>`;
+    const c=r.check;
+    h+=`<p class="kv">Check: ${c.slots}/${c.maxSlots} Slots · ${c.actives}/4 Aktive · Investment W/V/S ${c.invest.join(' / ')} Souls</p>`;
+  }
+  if(r.warnings.length) h+=r.warnings.map(w=>`<div class="warn">${esc(w)}</div>`).join('');
+  return h;
+}
+const expHtml=()=>`<div class="exp" style="margin-top:12px"><button id="bExp" class="primary">Build für das Spiel exportieren</button> <span id="expmsg" class="kv"></span><textarea id="expout" readonly rows="3" style="display:none;width:100%;margin-top:6px;font:11px monospace"></textarea></div>`;
+function finalOrder(r){
+  const F=new Set(r.final);const seen=new Set();const out=[];
+  [...S.build.core,...S.build.late].forEach(n=>{const f=S.repl[n]||n;if(F.has(f)&&!seen.has(f)){seen.add(f);out.push({name:f,from:S.repl[n]?n:''});}});
+  r.final.forEach(f=>{if(!seen.has(f)){seen.add(f);out.push({name:f,from:''});}});
+  return out;
+}
+function renderOrder(r){
+  if(r.ranking.length) return '<p class="hint">Noch kein Build hinterlegt – füge links Items hinzu.</p>';
+  const L=finalOrder(r);let tot=0;
+  let h='<div class="ord">';
+  L.forEach((x,i)=>{
+    const it=S.items[x.name];tot+=it?it.cost:0;
+    h+=`<div class="st ${x.from?'nw':''} c-${it?it.cat[0]:'X'}"><span class="no">${i+1}</span><span>${x.from?`<em>${esc(x.from)}</em>`:''}${iic(x.name)}${esc(x.name)}</span><span><small>${it?it.cost:'?'}</small></span></div>`;
+  });
+  h+=`</div><p class="kv" style="margin-top:10px">Endbuild: ${L.length}/12 Slots · ${tot} Souls · von links nach rechts kaufen · grün = Counter-Tausch (ersetzt das durchgestrichene Item). Early-Items für die Lane sind nicht enthalten.</p>`;
+  h+=`<h2 style="margin-top:12px">Skill-Reihenfolge</h2><div id="skl" class="kv">lädt…</div>`;
+  return h+expHtml();
+}
+async function loadSkills(){
+  const el=$('#skl');if(!el)return;
+  try{
+    const r=await api('/api/skills?hero='+encodeURIComponent(S.me));const i=r.info;
+    const tags=(i.steps||[]).map((n,k)=>`<span class="it" style="margin:2px"><small>${k+1}</small> ${esc(n)}</span>`).join('');
+    const head=i.source==='live'?`<p class="kv">Aus echten Matchdaten (deadlock-api): beste Siegrate-Reihenfolge, ${i.matches} Matches, ${i.wr} % Siegrate.</p>`:`<p class="warn">Keine Live-Daten geladen – das ist nur eine Notbehelf-Vorlage, nicht aus Matchdaten. ${esc(r.status||'')}</p>`;
+    const el2=$('#skl');if(el2)el2.innerHTML=head+tags;
+  }catch(e){const el2=$('#skl');if(el2)el2.textContent='Fehler: '+e.message;}
+}
+function renderResult(r){
+  S.last=r;
+  const tb=`<div class="tabs"><button data-tab="or" class="${S.tab==='or'?'on':''}">③ Kaufreihenfolge</button><button data-tab="an" class="${S.tab==='or'?'':'on'}">Begründung &amp; Analyse</button></div>`;
+  const hd=S.data.heroes.find(x=>x.name===S.me);
+  let body=(hd&&hd.derived?'<p class="warn">⚠ Für '+esc(S.me)+' gibt es keine Tracklock-Daten – das Build ist aus ähnlichen Helden abgeleitet. Bitte prüfen.</p>':'')+(S.tab==='or'?renderOrder(r):renderAnalysis(r));
+  if(S.tab!=='or'&&!r.ranking.length) body+=expHtml();
+  $('#result').innerHTML=tb+body;
+  if(S.tab==='or'&&!r.ranking.length)loadSkills();
+  $('#ms').textContent=r.ms<1?`⚡ ${Math.round(r.ms*1000)} µs`:`⚡ ${r.ms.toFixed(1)} ms`;
+}
+function schedule(){clearTimeout(S.timer);S.timer=setTimeout(calc,50);}
+async function calc(){
+  if(!S.me){$('#result').innerHTML='<p class="hint">Wähle links deinen Helden.</p>';return;}
+  const en=S.enemies.filter(Boolean);
+  if(!en.length){S.repl={};renderLists();$('#result').innerHTML='<p class="hint">Wähle jetzt bis zu 6 Gegner (Slot anklicken → Held). Mit ⚔ markierst du den direkten Lane-Gegner.</p>';return;}
+  try{
+    const r=await api('/api/calc','POST',{me:S.me,enemies:en,lane:S.lane&&en.includes(S.lane)?S.lane:'',swaps:S.swaps,build:S.build});
+    S.repl={};r.swaps.forEach(s=>{S.repl[s.remove]=s.add;});
+    S.last=r;renderResult(r);renderLists();
+  }catch(e){$('#result').innerHTML=`<p class="warn">Fehler: ${esc(e.message)}</p>`;}
+}
+
+/* ---------- Events ---------- */
+async function doExport(){
+  const r0=S.last;if(!r0||!S.me)return;
+  const L=finalOrder(r0);
+  const inFinal=new Set(L.map(x=>x.name));
+  const gone=new Set(Object.keys(S.repl));
+  const notes={};
+  r0.swaps.forEach(s=>{notes[s.add]='Counter: '+s.why;});
+  const build={core:L.map(x=>x.name),early:S.build.early.filter(n=>!inFinal.has(n)),
+    late:S.build.late.filter(n=>!inFinal.has(n)&&!gone.has(n))};
+  const counter=(r0.fallback||[]).map(x=>x.item).filter(n=>!inFinal.has(n));
+  const en=S.enemies.filter(Boolean);
+  const name=`${S.me} vs ${en.join('/')}`.slice(0,60);
+  const m=$('#expmsg'),o=$('#expout');
+  try{
+    const r=await api('/api/export','POST',{hero:S.me,name,build,counter,notes});
+    o.style.display='block';o.value=r.code;o.select();
+    let ok=false;try{await navigator.clipboard.writeText(r.code);ok=true;}catch(_){try{ok=document.execCommand('copy');}catch(_){}}
+    m.textContent=(ok?'In Zwischenablage kopiert · ':'Bitte manuell kopieren · ')+r.items+' Items · Skills: '+(r.skill&&r.skill.source==='live'?'Live-Daten':'NUR VORLAGE')+(r.unknown&&r.unknown.length?' · nicht exportiert: '+r.unknown.join(', '):'');
+  }catch(e){m.textContent='Fehler: '+e.message;}
+}
+function resetMatchup(){
+  S.me=null;S.enemies=[null,null,null,null,null,null];S.lane=null;S.active='me';
+  S.build={early:[],core:[],late:[]};S.repl={};S.last=null;S.msg='';
+  const s=$('#hsearch');if(s)s.value='';
+  renderSlots();renderGrid();renderLists();renderBar();calc();
+}
+document.addEventListener('contextmenu',e=>{
+  const slot=e.target.closest&&e.target.closest('.slot');if(!slot)return;
+  e.preventDefault();
+  if(slot.dataset.s==='me'){
+    if(!S.me)return;
+    S.me=null;S.build={early:[],core:[],late:[]};S.repl={};S.last=null;S.msg='';S.active='me';
+    renderSlots();renderGrid();renderLists();renderBar();calc();return;
+  }
+  const i=+slot.dataset.s;if(!S.enemies[i])return;
+  if(S.enemies[i]===S.lane)S.lane=null;
+  S.enemies[i]=null;S.active=i;
+  renderSlots();renderGrid();schedule();
+});
+document.addEventListener('click',async e=>{
+  if(e.target.id==='bReset'){resetMatchup();return;}
+  if(e.target.id==='bExp'){doExport();return;}
+  if(e.target.dataset&&e.target.dataset.tab){S.tab=e.target.dataset.tab;if(S.last)renderResult(S.last);return;}
+  const t=e.target;
+  if(t.dataset.lane!==undefined){const n=S.enemies[+t.dataset.lane];S.lane=S.lane===n?null:n;renderSlots();schedule();return;}
+  if(t.dataset.clear!==undefined){const i=+t.dataset.clear;if(S.enemies[i]===S.lane)S.lane=null;S.enemies[i]=null;S.active=i;renderSlots();renderGrid();schedule();return;}
+  const slot=t.closest('.slot');if(slot){S.active=slot.dataset.s==='me'?'me':+slot.dataset.s;renderSlots();return;}
+  const hb=t.closest('[data-h]');if(hb){pick(hb.dataset.h);return;}
+  if(t.dataset.a){
+    const z=t.dataset.z,i=+t.dataset.i,a=S.build[z];
+    if(t.dataset.a==='del')a.splice(i,1);
+    else if(t.dataset.a==='up'&&i>0)[a[i-1],a[i]]=[a[i],a[i-1]];
+    else if(t.dataset.a==='dn'&&i<a.length-1)[a[i+1],a[i]]=[a[i],a[i+1]];
+    S.msg='';renderLists();renderBar();schedule();return;
+  }
+  if(t.id==='bIcons'){try{await api('/api/icons/refresh','POST',{});}catch(err){} setTimeout(pollIcons,300);return;}
+  if(t.id==='bLoad'){S.build=baseBuild();S.msg='';renderLists();renderBar();schedule();return;}
+  if(t.id==='bSave'&&S.me){
+    try{const r=await api('/api/default','POST',{name:S.me,build:S.build});S.data.defaults[S.me]=clone(S.build);S.msg='✔ gespeichert ('+r.path+')';}
+    catch(err){S.msg='Fehler: '+err.message;}
+    renderBar();return;
+  }
+  if(t.id==='bDel'&&S.me){
+    try{await api('/api/default?name='+encodeURIComponent(S.me),'DELETE');delete S.data.defaults[S.me];S.build=baseBuild();S.msg='Default gelöscht';}
+    catch(err){S.msg='Fehler: '+err.message;}
+    renderLists();renderBar();schedule();return;
+  }
+  const add=t.closest('[data-add]');
+  if(add){const z=add.closest('.zone').dataset.z;addItem(z,add.dataset.add);const inp=add.closest('.add').querySelector('input');inp.value='';add.closest('.dd').hidden=true;return;}
+  if(!t.closest('.add')) document.querySelectorAll('.dd').forEach(d=>d.hidden=true);
+});
+document.addEventListener('change',e=>{if(e.target.id==='swaps'){S.swaps=+e.target.value;schedule();}});
+document.addEventListener('input',e=>{
+  if(e.target.id==='hsearch')renderGrid();
+  else if(e.target.closest&&e.target.closest('.add'))showDD(e.target);
+});
+document.addEventListener('focusin',e=>{if(e.target.matches&&e.target.matches('.add input'))showDD(e.target);});
+document.addEventListener('keydown',e=>{
+  if(!(e.target.matches&&e.target.matches('.add input')))return;
+  const dd=e.target.nextElementSibling;
+  if(e.key==='Enter'){const f=dd.querySelector('[data-add]');if(f){addItem(e.target.dataset.z,f.dataset.add);e.target.value='';dd.hidden=true;}}
+  if(e.key==='Escape')dd.hidden=true;
+});
+
+function renderIconStatus(){
+  const s=S.ic,hc=Object.keys(s.heroes).length,ic=Object.keys(s.items).length;
+  if(!s.enabled&&!hc&&!ic){$('#icst').textContent='Icons: aus';return;}
+  let t=`Icons: ${hc}/${s.heroTotal} Helden · ${ic}/${s.itemTotal} Items`;
+  if(s.running)t+=` · lädt… (${s.done+s.failed}/${s.total})`;
+  let h=esc(t);
+  if(!s.running&&(hc<s.heroTotal||ic<s.itemTotal)&&s.enabled)h+=' <button id="bIcons">Icons laden</button>';
+  if(s.err)h+=` <span class="warn" title="${esc(s.err)}">⚠ ${esc(s.err.slice(0,60))}</span>`;
+  $('#icst').innerHTML=h;
+}
+async function pollIcons(){
+  try{
+    const r=await api('/api/icons');
+    const changed=Object.keys(r.heroes).length!==Object.keys(S.ic.heroes).length||Object.keys(r.items).length!==Object.keys(S.ic.items).length;
+    S.ic=r;
+    if(changed){renderSlots();renderGrid();renderLists();if(S.last)renderResult(S.last);}
+    renderIconStatus();
+    if(r.running)setTimeout(pollIcons,1200);
+  }catch(e){}
+}
+async function init(){
+  S.data=await api('/api/data');
+  S.data.items.forEach(i=>S.items[i.name]=i);
+  $('#meta').textContent=`Build ${S.data.meta.build} · Stand ${S.data.meta.asOf} · ${S.data.heroes.length} Helden · ${S.data.items.length} Items · ${S.data.source}`;
+  initZones();renderSlots();renderGrid();renderLists();renderBar();
+  pollIcons();
+  api('/api/sync').then(r=>{$('#syncst').textContent=r.tracklock+' · '+r.status;}).catch(()=>{});
+}
+init();
+</script>
+</body>
+</html>

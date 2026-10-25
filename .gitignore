@@ -1,0 +1,15 @@
+# Binaries
+*.exe
+dlc-linux
+# Laufzeitdaten / private Dateien (liegen neben der exe)
+defaults.json
+settings.json
+icons/
+live_cache.json
+tracklock_cache.json
+tracklock_debug.html
+skillorders*.json
+_to_delete/
+# Entwicklung
+*.log
+.DS_Store
