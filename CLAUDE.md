@@ -21,14 +21,14 @@ Flags: `-port`, `-nobrowser`, `-no-icons` (disables all network access, includin
 
 ## Architecture
 
-- **Data loading (`main.go: loadData`)**: item data comes from `data/items.json`, hero catalog and default builds from `data/heroes.md` (a Markdown catalog parsed by `parseHeroes`). Both are embedded via `go:embed`. Files named `deadlock_items_*.json` / `deadlock_hero_catalog.md` next to the exe override them, so a patch update needs no rebuild.
+- **Data loading (`main.go: loadData`)**: item data comes from `data/items.json`, hero catalog and default builds from `data/heroes.md` (a Markdown catalog parsed by `parseHeroes`). Both are embedded via `go:embed`. Files named `deadlock_items_*.json` / `deadlock_hero_catalog.md` next to the exe override them, so a patch update needs no rebuild. `parseHeroes` depends on exact line prefixes in the catalog (`Flags:`, `Abilities:`, `Default build`, `NO Tracklock`, `Core-Mix W/V/S:`, `CORE:`, `Early:`, `Counter (items against X):`); change the catalog format and the parser together.
 - **Data enrichment at startup (order matters)**: `applyTracklock` (`tracklock.go`) scrapes default builds from tracklock.gg and replaces catalog builds; `deriveMissing` (`derive.go`) builds defaults for heroes without Tracklock data from similar heroes; `syncLive` (`live.go`) then updates item stats and hero/ability IDs from the asset API. All of it is cached next to the exe (`live_cache.json`, `tracklock_cache.json`, 24 h) and falls back to the embedded state when offline.
 - **Scoring (`main.go`)**: `computeVotes` collects points per item from counter lists, the team profile (`makeProfile`) and rule tables; `recommend` turns the votes into swaps, protects the hero's damage core and enforces slot limits (max. 12 slots). The result is `CalcResp`, served by `/api/calc`.
 - **Export (`export.go`)**: builds the in-game share string: Base64 → Zstandard (raw/hand-rolled with `xxh64`, no zstd dependency) → Protobuf `CMsgHeroBuild`. Item IDs are MurmurHash2 (seed `0x31415926`) of the item's `internal_name`. New heroes need an entry in `heroIDs`. `settings.json` supplies `author_account_id`.
 - **Skills (`skills.go`, `abil_gen.go`)**: `heroAbil` is generated static data (ability IDs and default skill order per hero). `skills.go` fetches real skill orders from match data (Wilson score) into `skillorders*.json`.
 - **Icons (`icons.go`)**: downloads hero/item icons once into `icons/` next to the exe; local files with normalized names (`norm`) are also picked up.
 - **Self-update (`update.go`)**: `selfUpdate` runs first in `main()`; if the latest GitHub release tag is newer than `version` (set via `-ldflags "-X main.version=vX.Y.Z"`, `dev` never updates) it downloads the `deadlock-counter.exe` asset, verifies the digest, swaps the exe (old one renamed to `.old`) and restarts. Releases are built by `.github/workflows/release.yml` on `v*` tags.
-- **Installer (`installer/installer.iss`)**: Inno Setup script built by the `installer` job in the release workflow. It downloads the latest `deadlock-counter.exe` at install time and installs per user into `%LOCALAPPDATA%ProgramsDeadlockCounter` (must stay user-writable, the updater and runtime files need it).
+- **Installer (`installer/installer.iss`)**: Inno Setup script built by the `installer` job in the release workflow. It downloads the latest `deadlock-counter.exe` at install time and installs per user into `{localappdata}ProgramsDeadlockCounter` (must stay user-writable: the updater and the runtime files need it).
 - **Icon (`assets/icon.ico`)**: embedded as favicon (`/favicon.ico`), used as installer icon, and compiled into the exe via `rsrc_windows_amd64.syso` (regenerate after changing the icon: `go install github.com/akavel/rsrc@v0.10.2`, then `rsrc -ico assets/icon.ico -arch amd64 -o rsrc_windows_amd64.syso`).
 - **Frontend**: single file `ui.html`, embedded; talks to `/api/*` endpoints registered in `main()`.
 - **Runtime files** (`defaults.json`, `settings.json`, `icons/`, `*_cache.json`, `skillorders*.json`) live next to the exe and are git-ignored.
@@ -36,3 +36,7 @@ Flags: `-port`, `-nobrowser`, `-no-icons` (disables all network access, includin
 ## Conventions
 
 - Hero/item names are matched through `norm()` / `nk()` normalization (lowercase, no special characters); use these instead of comparing raw names.
+
+## Releasing
+
+Push a tag `vX.Y.Z` (`git tag vX.Y.Z && git push origin vX.Y.Z`). The workflow tests, builds the Windows exe with `-X main.version`, creates the release and uploads `deadlock-counter-setup.exe`. Installed copies pick the release up on their next start via `selfUpdate`. The Windows exe is only ever built by CI for releases; local builds are `dev` and never self-update.
