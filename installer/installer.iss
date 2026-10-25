@@ -21,6 +21,7 @@ OutputBaseFilename=deadlock-counter-setup
 OutputDir=Output
 Compression=lzma2
 SolidCompression=yes
+SetupIconFile=..\assets\icon.ico
 WizardStyle=modern
 UninstallDisplayIcon={app}\{#AppExe}
 

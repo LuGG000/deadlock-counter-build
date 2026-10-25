@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-//go:embed data/items.json data/heroes.md ui.html
+//go:embed data/items.json data/heroes.md ui.html assets/icon.ico
 var assets embed.FS
 
 const (
@@ -1103,6 +1103,12 @@ func main() {
 		}
 		icons.scan()
 		writeJSON(w, map[string]any{"started": icons.start(true)})
+	})
+	favicon, _ := assets.ReadFile("assets/icon.ico")
+	mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		_, _ = w.Write(favicon)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
