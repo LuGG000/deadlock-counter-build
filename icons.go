@@ -1,9 +1,9 @@
 package main
 
-// Icons: laedt Helden- und Item-Icons einmalig von der Community-Asset-API
-// (assets.deadlock-api.com) und speichert sie im Ordner "icons" neben der exe.
-// Danach laeuft alles offline. Eigene Bilder koennen einfach in icons/heroes bzw.
-// icons/items abgelegt werden (Dateiname = Name ohne Sonderzeichen, z.B. abrams.png).
+// Icons: downloads hero and item icons once from the community asset API
+// (assets.deadlock-api.com) and stores them in the "icons" folder next to the exe.
+// After that everything works offline. Custom images can simply be placed in icons/heroes or
+// icons/items (file name = name without special characters, e.g. abrams.png).
 
 import (
 	"encoding/json"
@@ -66,7 +66,7 @@ func newIcons(d *Data, api string, enabled bool) *Icons {
 		for _, k := range []string{"heroes", "items"} {
 			if err := os.MkdirAll(filepath.Join(ic.dir, k), 0o755); err != nil {
 				ic.enabled = false
-				ic.lastErr = "Icon-Ordner nicht beschreibbar: " + err.Error()
+				ic.lastErr = "Icon folder not writable: " + err.Error()
 			}
 		}
 	}
@@ -105,7 +105,7 @@ func heroKeys(name string) []string {
 	return out
 }
 
-// scan liest die vorhandenen Dateien neu ein.
+// scan re-reads the existing files.
 func (ic *Icons) scan() {
 	hs, is := scanDir(filepath.Join(ic.dir, "heroes")), scanDir(filepath.Join(ic.dir, "items"))
 	h, i := map[string]string{}, map[string]string{}
@@ -193,10 +193,10 @@ func (ic *Icons) allowed(u *url.URL) bool {
 func (ic *Icons) request(rawURL string) (*http.Response, error) {
 	u, err := url.Parse(rawURL)
 	if err != nil || !ic.allowed(u) {
-		return nil, fmt.Errorf("URL nicht erlaubt: %s", rawURL)
+		return nil, fmt.Errorf("URL not allowed: %s", rawURL)
 	}
 	req, _ := http.NewRequest("GET", rawURL, nil)
-	req.Header.Set("User-Agent", "DeadlockCounterBuild/1.0 (lokales Privatprojekt)")
+	req.Header.Set("User-Agent", "DeadlockCounterBuild/1.0 (local hobby project)")
 	req.Header.Set("Referer", "https://deadlock-api.com/")
 	resp, err := ic.client.Do(req)
 	if err != nil {
@@ -209,7 +209,7 @@ func (ic *Icons) request(rawURL string) (*http.Response, error) {
 	return resp, nil
 }
 
-// fetchKind probiert nacheinander die bekannten Asset-Endpunkte (neu: api.../v1/assets/<kind>, alt: assets.../v2/<kind>).
+// fetchKind tries the known asset endpoints in turn (new: api.../v1/assets/<kind>, old: assets.../v2/<kind>).
 func (ic *Icons) fetchKind(kind string) ([]map[string]any, error) {
 	cands := []string{ic.api + "/v1/assets/" + kind, ic.api + "/v2/" + kind, "https://assets.deadlock-api.com/v2/" + kind}
 	seen := map[string]bool{}
@@ -225,7 +225,7 @@ func (ic *Icons) fetchKind(kind string) ([]map[string]any, error) {
 			return list, nil
 		}
 		if err == nil {
-			err = fmt.Errorf("leere Liste")
+			err = fmt.Errorf("empty list")
 		}
 		errs = append(errs, fmt.Sprintf("%s -> %v", u, err))
 	}
@@ -266,7 +266,7 @@ func (ic *Icons) fetchList(full string) ([]map[string]any, error) {
 			}
 		}
 	}
-	return nil, fmt.Errorf("unerwartetes JSON-Format")
+	return nil, fmt.Errorf("unexpected JSON format")
 }
 
 func imageURL(s string) bool {
@@ -277,7 +277,7 @@ func imageURL(s string) bool {
 	return err == nil && imgExts[strings.ToLower(path.Ext(u.Path))]
 }
 
-// pickURL waehlt die passende Bild-URL aus einem API-Objekt (auch aus verschachtelten Objekten wie "images").
+// pickURL picks the matching image URL from an API object (including nested objects such as "images").
 func pickURL(o map[string]any, prefs []string) string {
 	flat := map[string]string{}
 	add := func(m map[string]any) {
@@ -346,7 +346,7 @@ func (ic *Icons) run() {
 
 	itemObjs, err := ic.fetchKind("items")
 	if err != nil {
-		ic.setErr("Item-Liste nicht ladbar: " + err.Error())
+		ic.setErr("Item list unavailable: " + err.Error())
 	} else {
 		byName := map[string]map[string]any{}
 		for _, o := range itemObjs {
@@ -371,16 +371,16 @@ func (ic *Icons) run() {
 				tasks = append(tasks, iconTask{"items", it.Name, it.key, u})
 			}
 		}
-		log.Printf("Icons: Items – API liefert %d Eintraege, %d passend, %d mit Bild-URL", len(itemObjs), matched, withURL)
+		log.Printf("Icons: items - API returned %d entries, %d matched, %d with image URL", len(itemObjs), matched, withURL)
 		if matched > 0 && withURL == 0 {
 			ic.debugDump("items", itemObjs)
-			ic.setErr("Keine Item-Bild-URLs gefunden (siehe icons/_debug_items.json)")
+			ic.setErr("No item image URLs found (see icons/_debug_items.json)")
 		}
 	}
 
 	heroObjs, err := ic.fetchKind("heroes")
 	if err != nil {
-		ic.setErr("Helden-Liste nicht ladbar: " + err.Error())
+		ic.setErr("Hero list unavailable: " + err.Error())
 	} else {
 		byName := map[string]map[string]any{}
 		for _, o := range heroObjs {
@@ -419,10 +419,10 @@ func (ic *Icons) run() {
 				tasks = append(tasks, iconTask{"heroes", h.Name, norm(h.Name), u})
 			}
 		}
-		log.Printf("Icons: Helden – API liefert %d Eintraege, %d passend, %d mit Bild-URL", len(heroObjs), matched, withURL)
+		log.Printf("Icons: heroes - API returned %d entries, %d matched, %d with image URL", len(heroObjs), matched, withURL)
 		if matched > 0 && withURL == 0 {
 			ic.debugDump("heroes", heroObjs)
-			ic.setErr("Keine Helden-Bild-URLs gefunden (siehe icons/_debug_heroes.json)")
+			ic.setErr("No hero image URLs found (see icons/_debug_heroes.json)")
 		}
 	}
 
@@ -464,7 +464,7 @@ func (ic *Icons) run() {
 	close(ch)
 	wg.Wait()
 	ic.mu.Lock()
-	log.Printf("Icons: %d geladen, %d fehlgeschlagen", ic.done, ic.failed)
+	log.Printf("Icons: %d loaded, %d failed", ic.done, ic.failed)
 	ic.mu.Unlock()
 }
 
@@ -488,7 +488,7 @@ func (ic *Icons) downloadOnce(t iconTask) (string, error) {
 	}
 	defer resp.Body.Close()
 	if ct := resp.Header.Get("Content-Type"); ct != "" && !strings.HasPrefix(ct, "image/") && ct != "application/octet-stream" {
-		return "", fmt.Errorf("kein Bild (%s)", ct)
+		return "", fmt.Errorf("not an image (%s)", ct)
 	}
 	u, _ := url.Parse(t.url)
 	ext := strings.ToLower(path.Ext(u.Path))
@@ -507,7 +507,7 @@ func (ic *Icons) downloadOnce(t iconTask) (string, error) {
 	if err != nil || n == 0 {
 		os.Remove(tmp)
 		if err == nil {
-			err = fmt.Errorf("leere Datei")
+			err = fmt.Errorf("empty file")
 		}
 		return "", err
 	}

@@ -1,7 +1,7 @@
 package main
 
-// Export: Build -> Ingame-Import-String (Base64(Zstd(Protobuf CMsgHeroBuild))),
-// Format wie in deadlock_build.py. Zstd ohne Fremdbibliothek: gueltiger Frame mit Raw-Bloecken.
+// Export: build -> in-game import string (Base64(Zstd(Protobuf CMsgHeroBuild))),
+// Same format as the game's share string. Zstd without a third-party library: a valid frame with raw blocks.
 
 import (
 	"encoding/base64"
@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-// Hero-IDs (m_HeroID aus heroes.vdata, Stand Build 6817), Schluessel = norm(Name).
+// Hero IDs (m_HeroID from heroes.vdata, as of build 6817), key = norm(name).
 var heroIDs = map[string]uint32{
 	"abrams": 6, "apollo": 77, "baba": 88, "bebop": 15, "billy": 72, "calico": 16, "celeste": 81,
 	"deadmandanny": 78, "drifter": 64, "dynamo": 11, "graves": 76, "greytalon": 17, "haze": 13,
@@ -76,11 +76,11 @@ func pbF32(b []byte, field int, f float32) []byte {
 	return binary.LittleEndian.AppendUint32(b, math.Float32bits(f))
 }
 
-// Steam32-Account-ID des Autors. Steht NICHT im Quellcode, sondern in settings.json neben der exe:
+// Steam32 account ID of the author. NOT in the source code, but in settings.json next to the exe:
 //
 //	{"author_account_id": 123456789}
 //
-// (die ID steckt in jedem eigenen Ingame-Export-String, Feld "author_account_id").
+// (the ID is embedded in every own in-game export string, field "author_account_id").
 var authorAccountID uint64
 
 func loadSettings() {
@@ -101,10 +101,10 @@ type exCat struct {
 	IDs   []uint32
 	Notes []string
 	W, H  float32
-	Opt   bool // Kategorie ist im Spiel als "Optional" markiert
+	Opt   bool // category is marked "Optional" in the game
 }
 
-// buildProto erzeugt CMsgHeroBuild (Felder aufsteigend wie im Python-Script).
+// buildProto creates CMsgHeroBuild (fields in ascending order).
 func buildProto(heroID uint32, name, desc string, cats []exCat, ts uint32, order []byte) []byte {
 	var details []byte
 	for _, c := range cats {
@@ -129,7 +129,7 @@ func buildProto(heroID uint32, name, desc string, cats []exCat, ts uint32, order
 		details = pbBytes(details, 2, order)
 	}
 	var b []byte
-	b = pbU(b, 1, uint64(ts%1000000+100)) // lokale Build-ID
+	b = pbU(b, 1, uint64(ts%1000000+100)) // local build ID
 	b = pbU(b, 2, uint64(heroID))
 	if authorAccountID != 0 {
 		b = pbU(b, 3, authorAccountID)
@@ -142,7 +142,7 @@ func buildProto(heroID uint32, name, desc string, cats []exCat, ts uint32, order
 	return b
 }
 
-// xxh64 (fuer das Content-Checksum-Feld des Zstd-Frames).
+// xxh64 (for the content checksum field of the Zstd frame).
 func xxh64(in []byte) uint64 {
 	var p1, p2, p3, p4, p5 uint64 = 11400714785074694791, 14029467366897019727, 1609587929392839161, 9650029242287828579, 2870177450012600261
 	rotl := func(x uint64, r uint) uint64 { return x<<r | x>>(64-r) }
@@ -189,15 +189,15 @@ func xxh64(in []byte) uint64 {
 	return h
 }
 
-// zstdRaw: gueltiger Zstandard-Frame aus Raw-Bloecken (keine Kompression, jeder Decoder liest ihn).
+// zstdRaw: valid Zstandard frame made of raw blocks (no compression, any decoder reads it).
 func zstdRaw(data []byte) []byte {
 	out := []byte{0x28, 0xB5, 0x2F, 0xFD}
-	// Frame-Header: Single-Segment, Content-Size 4 Byte (FCS flag 2), Checksum an.
-	out = append(out, 0x80|0x20|0x04) // FCS=2 (4 Byte), single segment, checksum
+	// Frame header: single segment, content size 4 bytes (FCS flag 2), checksum on.
+	out = append(out, 0x80|0x20|0x04) // FCS=2 (4 bytes), single segment, checksum
 	out = binary.LittleEndian.AppendUint32(out, uint32(len(data)))
 	const maxBlock = 128 * 1024
 	if len(data) == 0 {
-		out = append(out, 0x01, 0x00, 0x00) // letzter leerer Raw-Block
+		out = append(out, 0x01, 0x00, 0x00) // last empty raw block
 	}
 	for off := 0; off < len(data); off += maxBlock {
 		end := off + maxBlock
@@ -233,7 +233,7 @@ type ExportResp struct {
 func (d *Data) exportBuild(req ExportReq) (*ExportResp, error) {
 	hid, ok := heroIDs[norm(req.Hero)]
 	if !ok {
-		return nil, fmt.Errorf("Hero-ID fuer %q unbekannt", req.Hero)
+		return nil, fmt.Errorf("unknown hero ID for %q", req.Hero)
 	}
 	resp := &ExportResp{HeroID: hid}
 	mk := func(cname string, names []string, w, h float32) exCat {
@@ -250,7 +250,7 @@ func (d *Data) exportBuild(req ExportReq) (*ExportResp, error) {
 		}
 		return c
 	}
-	// Reihenfolge wie bei echten Ingame-Builds: "Core Build" zuerst = Haupt-Build.
+	// Same order as real in-game builds: "Core Build" first = main build.
 	var cats []exCat
 	for _, c := range []exCat{
 		mk("Core Build", req.Build.Core, 1045.5, 286.5),

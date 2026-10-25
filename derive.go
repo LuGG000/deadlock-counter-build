@@ -1,8 +1,8 @@
 package main
 
-// Abgeleitete Daten fuer Helden ohne Tracklock-Build (zu neu / zu wenig Matches):
-// Build und Gegenitems werden aus aehnlichen Helden (gleiche Rolle, aehnliche Schadensverteilung) zusammengesetzt.
-// Sobald echte Daten im Katalog stehen, greift das automatisch nicht mehr.
+// Derived data for heroes without a Tracklock build (too new / too few matches):
+// Build and counter items are assembled from similar heroes (same role, similar damage split).
+// As soon as real data is in the catalog, this no longer applies automatically.
 
 import (
 	"sort"
@@ -20,7 +20,7 @@ func l1(a, b [3]int) int {
 	return t
 }
 
-// pickTop: Items nach Haeufigkeit (gewichtet nach Position) auswaehlen, dann nach Durchschnittsposition ordnen.
+// pickTop: select items by frequency (weighted by position), then order by average position.
 func pickTop(lists [][]string, n int, d *Data) []string {
 	type agg struct {
 		name  string
@@ -109,7 +109,7 @@ func deriveMissing(d *Data) []string {
 			h.HasBuild, h.Derived = true, true
 		}
 		if needCounter {
-			// Gegenitems: alle Helden der gleichen Rolle, haeufigste zuerst
+			// Counter items: all heroes of the same role, most frequent first
 			var cl [][]string
 			for _, o := range d.Heroes {
 				if o != h && o.Role == h.Role && len(o.counter) > 0 && !o.Derived {

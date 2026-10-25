@@ -1,5 +1,5 @@
-// Deadlock Counter-Build: schneller lokaler Server + leichte Browser-UI.
-// Nur Standardbibliothek. Daten werden einmal beim Start geparst, jede Berechnung dauert Mikrosekunden.
+// Deadlock Counter-Build: fast local server + lightweight browser UI.
+// Standard library only. Data is parsed once at startup; each calculation takes microseconds.
 package main
 
 import (
@@ -28,13 +28,13 @@ var assets embed.FS
 
 const (
 	maxActives    = 4
-	maxSlots      = 12 // 9 + 3 Extra-Slots
-	protectedCore = 8  // erste Core-Eintraege nur bei sehr starkem Grund tauschen
+	maxSlots      = 12 // 9 + 3 extra slots
+	protectedCore = 8  // only swap the first core entries for a very strong reason
 	spike         = 4800
 	minGain       = 1.5
 )
 
-// ------------------------------------------------------------------ Hilfsfunktionen
+// ------------------------------------------------------------------ Helpers
 
 func norm(s string) string {
 	s = strings.ReplaceAll(s, "\u2019", "'")
@@ -58,7 +58,7 @@ func hasKey(list []string, key string) bool {
 
 var catIdx = map[string]int{"Weapon": 0, "Vitality": 1, "Spirit": 2}
 
-// ------------------------------------------------------------------ Datenmodell
+// ------------------------------------------------------------------ Data model
 
 type Item struct {
 	Name   string `json:"name"`
@@ -67,11 +67,11 @@ type Item struct {
 	Cost   int    `json:"cost"`
 	Active bool   `json:"active"`
 	Tip    string `json:"tip"`
-	IName  string `json:"-"` // interner Name (fuer Export-String)
+	IName  string `json:"-"` // internal name (for the export string)
 	key    string
 	comps  []string
-	grp    int // Funktionsgruppe oder -1
-	ci     int // Kategorie-Index oder -1
+	grp    int // function group or -1
+	ci     int // category index or -1
 }
 
 type Build struct {
@@ -86,8 +86,8 @@ type Hero struct {
 	Shares                                    [3]int  `json:"shares"` // W/V/S in %
 	Flags                                     string  `json:"flags"`
 	HasBuild                                  bool    `json:"hasBuild"`
-	Derived                                   bool    `json:"derived"`        // Build aus aehnlichen Helden abgeleitet
-	DerivedCounter                            bool    `json:"derivedCounter"` // Gegenitems abgeleitet
+	Derived                                   bool    `json:"derived"`        // build derived from similar heroes
+	DerivedCounter                            bool    `json:"derivedCounter"` // counter items derived
 	WR                                        float64 `json:"wr"`
 	Catalog                                   Build   `json:"catalog"`
 	head                                      string
@@ -219,7 +219,7 @@ var (
 	splitRe   = regexp.MustCompile(`\s>\s|,\s*`)
 	mixRe     = regexp.MustCompile(`Core-Mix W/V/S:\s*(\d+)/(\d+)/(\d+)`)
 	wrRe      = regexp.MustCompile(`WR\s*([\d.]+)%`)
-	counterRe = regexp.MustCompile(`^Counter \(Items GEGEN .+?\):\s*(.*)$`)
+	counterRe = regexp.MustCompile(`^Counter \(items against .+?\):\s*(.*)$`)
 	mobileRe  = regexp.MustCompile(`(?i)mobility|nimble|high-flying|acrobatics|traveller|slippery`)
 	blockRe   = regexp.MustCompile(`\n(?:### )`)
 )
@@ -259,8 +259,8 @@ func parseHeroes(text string) []*Hero {
 				h.Flags = strings.TrimSpace(ln[6:])
 			case strings.HasPrefix(ln, "Abilities:"):
 				abilities = ln
-			case strings.HasPrefix(ln, "Default-Build"):
-				if strings.Contains(ln, "KEINE") {
+			case strings.HasPrefix(ln, "Default build"):
+				if strings.Contains(ln, "NO Tracklock") {
 					h.HasBuild = false
 				} else {
 					h.HasBuild = true
@@ -290,7 +290,7 @@ func parseHeroes(text string) []*Hero {
 				}
 			}
 		}
-		// Schadensanteile
+		// Damage shares
 		if h.hasMix {
 			h.Shares = h.mix
 		} else {
@@ -336,7 +336,7 @@ func parseHeroes(text string) []*Hero {
 	return heroes
 }
 
-// ------------------------------------------------------------------ Laden (extern oder eingebettet)
+// ------------------------------------------------------------------ Loading (external or embedded)
 
 func findExternal(names ...string) (string, bool) {
 	var dirs []string
@@ -364,11 +364,11 @@ func findExternal(names ...string) (string, bool) {
 
 func loadData() (*Data, error) {
 	var itemsRaw, heroRaw []byte
-	src := "eingebettete Daten"
+	src := "embedded data"
 	if p, ok := findExternal("deadlock_items_*.json"); ok {
 		if b, err := os.ReadFile(p); err == nil {
 			itemsRaw = b
-			src = "Dateien neben der exe"
+			src = "files next to the exe"
 		}
 	}
 	if p, ok := findExternal("deadlock_hero_catalog.md"); ok {
@@ -381,7 +381,7 @@ func loadData() (*Data, error) {
 	}
 	if heroRaw == nil {
 		heroRaw, _ = assets.ReadFile("data/heroes.md")
-		src = "eingebettete Daten"
+		src = "embedded data"
 	}
 	items, im, meta, err := parseItems(itemsRaw)
 	if err != nil {
@@ -395,12 +395,12 @@ func loadData() (*Data, error) {
 	d := &Data{Meta: meta, Items: items, ItemMap: im, Heroes: heroes, HeroMap: hm, Source: src}
 	applyTracklock(d)
 	for _, line := range deriveMissing(d) {
-		log.Printf("Abgeleitet (keine Tracklock-Daten): %s", line)
+		log.Printf("Derived (no Tracklock data): %s", line)
 	}
 	return d, nil
 }
 
-// ------------------------------------------------------------------ Bewertung
+// ------------------------------------------------------------------ Scoring
 
 type group struct {
 	name  string
@@ -410,7 +410,7 @@ type group struct {
 
 var groupDefs = []group{
 	{"Purge/Unstoppable", []string{"Dispel Magic", "Unstoppable", "Divine Barrier", "Cloak of Opportunity", "Unstable Concoction"}, 1},
-	{"Healing-Reduktion", []string{"Healbane", "Toxic Bullets", "Inhibitor"}, 1},
+	{"Healing reduction", []string{"Healbane", "Toxic Bullets", "Inhibitor"}, 1},
 	{"Bullet-Defense", []string{"Bullet Resilience", "Plated Armor", "Metal Skin", "Weapon Shielding", "Escalating Resilience", "Juggernaut", "Return Fire"}, 2},
 	{"Spirit-Defense", []string{"Spirit Resilience", "Witchmail", "Spellbreaker", "Counterspell", "Spirit Shielding", "Diviner's Kevlar"}, 2},
 	{"Silence/Lockdown", []string{"Cursed Relic", "Knockdown", "Silence Wave"}, 1},
@@ -438,7 +438,7 @@ func newVotes() *Votes {
 
 var normCache sync.Map
 
-// nk: norm() mit Cache, nur fuer feste Namen (Regeln, Heldendaten)
+// nk: norm() with cache, only for fixed names (rules, hero data)
 func nk(s string) string {
 	if v, ok := normCache.Load(s); ok {
 		return v.(string)
@@ -471,11 +471,11 @@ func (v *Votes) penalty(item string, pts float64) { v.score[nk(item)] -= pts }
 func (v *Votes) reason(k string) string {
 	var parts []string
 	if len(v.enemies[k]) > 0 {
-		parts = append(parts, "Counter-Pick gegen "+strings.Join(v.enemies[k], ", "))
+		parts = append(parts, "Counter pick against "+strings.Join(v.enemies[k], ", "))
 	}
 	parts = append(parts, v.rules[k]...)
 	if len(parts) == 0 {
-		return "allgemein sinnvoll"
+		return "generally useful"
 	}
 	return strings.Join(parts, "; ")
 }
@@ -547,7 +547,7 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 
 	nh, ncc, ngun, nsp := len(prof.Heal), len(prof.CC), len(prof.Gun), len(prof.Spirit)
 	if nh >= 2 {
-		txt := fmt.Sprintf("%d Heiler/Lifesteal-Helden im Gegnerteam", nh)
+		txt := fmt.Sprintf("%d healer/lifesteal heroes on the enemy team", nh)
 		if gunHero {
 			V.rule("Toxic Bullets", 3, txt)
 			V.rule("Inhibitor", 2, txt)
@@ -556,23 +556,23 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 		}
 	} else if nh == 1 {
 		if gunHero {
-			V.rule("Toxic Bullets", 1, "1 Heiler im Gegnerteam")
+			V.rule("Toxic Bullets", 1, "1 healer on the enemy team")
 		} else {
-			V.rule("Healbane", 1, "1 Heiler im Gegnerteam")
+			V.rule("Healbane", 1, "1 healer on the enemy team")
 		}
 	}
 	if ncc >= 3 {
-		txt := fmt.Sprintf("%d CC-Helden (Stun/Sleep/Root)", ncc)
+		txt := fmt.Sprintf("%d CC heroes (stun/sleep/root)", ncc)
 		V.rule("Debuff Reducer", 3, txt)
 		V.rule("Unstoppable", 2, txt)
 	} else if ncc == 2 {
-		V.rule("Debuff Reducer", 1, "2 CC-Helden")
+		V.rule("Debuff Reducer", 1, "2 CC heroes")
 	}
 	if len(prof.Silence) >= 2 {
-		V.rule("Counterspell", 1, "mehrere Silence/Disarm-Helden")
+		V.rule("Counterspell", 1, "several silence/disarm heroes")
 	}
 	if ngun >= 3 {
-		txt := fmt.Sprintf("%d Gun-Carries (%s)", ngun, strings.Join(prof.Gun, ", "))
+		txt := fmt.Sprintf("%d gun carries (%s)", ngun, strings.Join(prof.Gun, ", "))
 		V.rule("Bullet Resilience", 3, txt)
 		V.rule("Plated Armor", 2, txt)
 		V.rule("Metal Skin", 1.5, txt)
@@ -583,7 +583,7 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 		}
 	}
 	if nsp >= 3 {
-		txt := fmt.Sprintf("%d Spirit-Burst-Helden (%s)", nsp, strings.Join(prof.Spirit, ", "))
+		txt := fmt.Sprintf("%d spirit burst heroes (%s)", nsp, strings.Join(prof.Spirit, ", "))
 		V.rule("Spirit Resilience", 3, txt)
 		V.rule("Witchmail", 2, txt)
 		V.rule("Spellbreaker", 2, txt)
@@ -595,7 +595,7 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 		}
 	}
 	if len(prof.Tank) >= 2 {
-		txt := fmt.Sprintf("%d Tanks/Resist-Helden", len(prof.Tank))
+		txt := fmt.Sprintf("%d tank/resist heroes", len(prof.Tank))
 		if gunHero {
 			V.rule("Bullet Resist Shredder", 2, txt)
 			V.rule("Hunter's Aura", 1.5, txt)
@@ -606,12 +606,12 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 		}
 	}
 	if len(prof.Mobile) >= 3 {
-		txt := fmt.Sprintf("%d mobile Helden", len(prof.Mobile))
+		txt := fmt.Sprintf("%d mobile heroes", len(prof.Mobile))
 		V.rule("Slowing Hex", 2, txt)
 		V.rule("Knockdown", 1.5, txt)
 	}
 	if len(prof.Slow) >= 3 {
-		V.rule("Debuff Reducer", 1.5, fmt.Sprintf("%d Slow-Helden", len(prof.Slow)))
+		V.rule("Debuff Reducer", 1.5, fmt.Sprintf("%d slow heroes", len(prof.Slow)))
 	}
 	if ms < 25 {
 		V.penalty("Healbane", 3)
@@ -623,7 +623,7 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 	return V, prof
 }
 
-// ------------------------------------------------------------------ Build-Logik
+// ------------------------------------------------------------------ Build logic
 
 type Swap struct {
 	Add    string   `json:"add"`
@@ -668,7 +668,7 @@ func (d *Data) canon(names []string, warn *[]string) []string {
 	return out
 }
 
-// Ref: ein Item im Build mit vorberechnetem Schluessel und Zeiger auf die Itemdaten.
+// Ref: an item in the build with a precomputed key and a pointer to the item data.
 type Ref struct {
 	Name string
 	Key  string
@@ -686,7 +686,7 @@ func (d *Data) refs(names []string, warn *[]string) []Ref {
 		if it, ok := d.ItemMap[k]; ok {
 			out = append(out, Ref{it.Name, k, it})
 		} else {
-			*warn = append(*warn, "Unbekanntes Item (ohne Werte): "+n)
+			*warn = append(*warn, "Unknown item (no stats): "+n)
 			out = append(out, Ref{n, k, &Item{Name: n, key: k, grp: -1, ci: -1}})
 		}
 	}
@@ -792,7 +792,7 @@ func (d *Data) recommend(me *Hero, enemies []*Hero, lane *Hero, b Build, maxSwap
 		}
 	}
 
-	// Ersetzbare Positionen: Late (hinten zuerst), letzte 4 Core, mittlere Core nur bei starkem Grund
+	// Replaceable positions: Late (last first), last 4 Core, middle Core only for a strong reason
 	type pe struct {
 		ref        Ref
 		zone       string
@@ -815,8 +815,8 @@ func (d *Data) recommend(me *Hero, enemies []*Hero, lane *Hero, b Build, maxSwap
 		}
 	}
 
-	// Schadens-Kern schuetzen: Bei Helden mit klar dominanter Kategorie (>= 60 %) darf hoechstens EIN
-	// Core-Item dieser Kategorie ersetzt werden; Late-Items zaehlen nicht.
+	// Protect the damage core: for heroes with a clearly dominant category (>= 60 %) at most ONE
+	// core item of that category may be replaced; Late items do not count.
 	domCi, domSh := 0, me.Shares[0]
 	for ci := 1; ci < 3; ci++ {
 		if me.Shares[ci] > domSh {
@@ -844,7 +844,7 @@ func (d *Data) recommend(me *Hero, enemies []*Hero, lane *Hero, b Build, maxSwap
 		bestDom := false
 		for _, e := range sorted {
 			if e.v < 2.0 {
-				break // absteigend sortiert
+				break // sorted descending
 			}
 			if usedAdd[e.k] || compOfBuild[e.k] || hasRef(build, e.k) {
 				continue
@@ -904,14 +904,14 @@ func (d *Data) recommend(me *Hero, enemies []*Hero, lane *Hero, b Build, maxSwap
 				for ci := 0; ci < 3; ci++ {
 					if tot[ci] >= spike && after[ci] < spike {
 						adj -= 3
-						notes = append(notes, fmt.Sprintf("Achtung: %s-Summe faellt unter den %d-Spike", catNames[ci], spike))
+						notes = append(notes, fmt.Sprintf("Warning: %s total drops below the %d spike", catNames[ci], spike))
 					} else if tot[ci] < spike && after[ci] >= spike {
 						adj += 0.5
-						notes = append(notes, fmt.Sprintf("%s-Summe erreicht den %d-Spike", catNames[ci], spike))
+						notes = append(notes, fmt.Sprintf("%s total reaches the %d spike", catNames[ci], spike))
 					}
 				}
 				if isDom {
-					notes = append(notes, fmt.Sprintf("Ersetzt ein Kern-%s-Item (%d%% deiner Investition) – nur ein solcher Tausch wird vorgeschlagen", catNames[domCi], domSh))
+					notes = append(notes, fmt.Sprintf("Replaces a core %s item (%d%% of your investment) - only one such swap is suggested", catNames[domCi], domSh))
 				}
 				rs := rscore
 				if rs < 0 {
@@ -919,9 +919,9 @@ func (d *Data) recommend(me *Hero, enemies []*Hero, lane *Hero, b Build, maxSwap
 				}
 				gain := e.v - 0.8*rs + adj
 				if p.zone == "Late" {
-					gain += 1.5 // Late-Items sind am ehesten entbehrlich
+					gain += 1.5 // Late items are the most expendable
 				} else if p.needStrong {
-					gain -= 1.5 // Mitte des Cores: nur wenn es sich klar lohnt
+					gain -= 1.5 // middle of the core: only if clearly worthwhile
 				}
 				if gain >= minGain && (best == nil || gain > bestGain) {
 					bestGain = gain
@@ -976,15 +976,15 @@ func earlyTips(lane *Hero) []string {
 	}
 	w, s := lane.Shares[0], lane.Shares[2]
 	if w >= 50 {
-		tips = append(tips, fmt.Sprintf("Lane-Gegner %s ist Gun-lastig: fruehes Bullet-Resist (z.B. Battle Vest) oder Barrier-Item.", lane.Name))
+		tips = append(tips, fmt.Sprintf("Lane opponent %s is gun-heavy: get early bullet resist (e.g. Battle Vest) or a barrier item.", lane.Name))
 	} else if s >= 50 {
-		tips = append(tips, fmt.Sprintf("Lane-Gegner %s ist Spirit-lastig: fruehes Spirit-Resist (z.B. Enchanter's Emblem / Restorative Locket).", lane.Name))
+		tips = append(tips, fmt.Sprintf("Lane opponent %s is spirit-heavy: get early spirit resist (e.g. Enchanter's Emblem / Restorative Locket).", lane.Name))
 	}
 	if lane.isHeal {
-		tips = append(tips, fmt.Sprintf("%s hat viel Sustain: Healbane/Toxic Bullets frueh einplanen.", lane.Name))
+		tips = append(tips, fmt.Sprintf("%s has a lot of sustain: plan Healbane/Toxic Bullets early.", lane.Name))
 	}
 	if lane.isCC {
-		tips = append(tips, fmt.Sprintf("%s hat harten CC: Debuff Reducer ist billig (T2) und hilft in der Lane.", lane.Name))
+		tips = append(tips, fmt.Sprintf("%s has hard CC: Debuff Reducer is cheap (T2) and helps in lane.", lane.Name))
 	}
 	return tips
 }
@@ -997,7 +997,7 @@ func nz(s []string) []string {
 }
 func round1(f float64) float64 { return float64(int(f*10+0.5)) / 10 }
 
-// ------------------------------------------------------------------ Defaults (gespeicherte Builds)
+// ------------------------------------------------------------------ Defaults (saved builds)
 
 type Store struct {
 	mu   sync.Mutex
@@ -1056,11 +1056,11 @@ func writeJSON(w http.ResponseWriter, v any) {
 }
 
 func main() {
-	port := flag.Int("port", 47871, "Port (bei Belegung wird automatisch ein freier gewaehlt)")
-	noBrowser := flag.Bool("nobrowser", false, "Browser nicht automatisch oeffnen")
-	noIcons := flag.Bool("no-icons", false, "keine Icons herunterladen")
-	noUpdate := flag.Bool("no-update", false, "nicht nach Programm-Updates suchen")
-	assetsAPI := flag.String("assets-api", "https://api.deadlock-api.com", "Basis-URL der Asset-API")
+	port := flag.Int("port", 47871, "port (a free one is picked automatically if it is taken)")
+	noBrowser := flag.Bool("nobrowser", false, "do not open the browser automatically")
+	noIcons := flag.Bool("no-icons", false, "do not download icons (disables all network access)")
+	noUpdate := flag.Bool("no-update", false, "do not check for program updates")
+	assetsAPI := flag.String("assets-api", "https://api.deadlock-api.com", "base URL of the asset API")
 	flag.Parse()
 
 	netEnabled = !*noIcons
@@ -1071,10 +1071,10 @@ func main() {
 	t0 := time.Now()
 	d, err := loadData()
 	if err != nil {
-		log.Fatalf("Daten konnten nicht geladen werden: %v", err)
+		log.Fatalf("Could not load data: %v", err)
 	}
 	store := newStore()
-	log.Printf("Daten geladen in %v: %d Helden, %d Items (%s)", time.Since(t0), len(d.Heroes), len(d.Items), d.Source)
+	log.Printf("Data loaded in %v: %d heroes, %d items (%s)", time.Since(t0), len(d.Heroes), len(d.Items), d.Source)
 
 	icons := newIcons(d, *assetsAPI, !*noIcons)
 	if icons.enabled && icons.missing() > 0 {
@@ -1130,7 +1130,7 @@ func main() {
 		start := time.Now()
 		me := d.HeroMap[norm(req.Me)]
 		if me == nil {
-			http.Error(w, "Held unbekannt", http.StatusBadRequest)
+			http.Error(w, "unknown hero", http.StatusBadRequest)
 			return
 		}
 		var enemies []*Hero
@@ -1218,12 +1218,12 @@ func main() {
 		}
 	})
 
-	// Auf einem Port starten und per Selbsttest pruefen, dass wirklich DIESES Programm antwortet
-	// (unter Windows koennen sich zwei Programme einen Port teilen).
+	// Start on a port and verify via self-check that THIS program is the one answering
+	// (on Windows two programs can share a port).
 	for _, p := range []int{*port, 0} {
 		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", p))
 		if err != nil {
-			log.Printf("Port %d nicht nutzbar: %v", p, err)
+			log.Printf("Port %d not usable: %v", p, err)
 			continue
 		}
 		srv := &http.Server{Handler: mux}
@@ -1231,17 +1231,17 @@ func main() {
 		go func() { errCh <- srv.Serve(ln) }()
 		url := "http://" + ln.Addr().String()
 		if !selfCheck(url) {
-			log.Printf("Port %d wird von einem anderen Programm mitbenutzt – weiche aus", ln.Addr().(*net.TCPAddr).Port)
+			log.Printf("Port %d is shared with another program - using a different port", ln.Addr().(*net.TCPAddr).Port)
 			_ = srv.Close()
 			continue
 		}
-		log.Printf("Deadlock Counter-Build laeuft auf %s  (Fenster schliessen = beenden)", url)
+		log.Printf("Deadlock Counter-Build running on %s  (close this window to quit)", url)
 		if !*noBrowser {
 			go openBrowser(url)
 		}
 		log.Fatal(<-errCh)
 	}
-	log.Fatal("kein freier Port gefunden")
+	log.Fatal("no free port found")
 }
 
 func selfCheck(url string) bool {

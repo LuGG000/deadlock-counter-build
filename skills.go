@@ -1,8 +1,8 @@
 package main
 
-// Skill-Reihenfolge je Held aus echten Matchdaten (deadlock-api: /v1/analytics/ability-order-stats).
-// Das Tool laedt sie auf dem PC des Nutzers (Cache: skillorders.json neben der exe, 24h).
-// Gewaehlt wird pro Held die Reihenfolge mit der besten Wilson-Untergrenze der Siegrate.
+// Skill order per hero from real match data (deadlock-api: /v1/analytics/ability-order-stats).
+// The tool fetches it on the user's PC (cache: skillorders_v2.json next to the exe, 24h).
+// Per hero, the order with the best Wilson lower bound of the win rate is chosen.
 
 import (
 	"encoding/json"
@@ -32,7 +32,7 @@ type Skills struct {
 	enabled bool
 	running bool
 	status  string
-	m       map[string]skillEntry // Schluessel = Heldenname (norm)
+	m       map[string]skillEntry // key = hero name (norm)
 }
 
 var skills *Skills
@@ -74,7 +74,7 @@ func wilson(w, n uint64) float64 {
 	return (p + z*z/(2*nn) - z*math.Sqrt((p*(1-p)+z*z/(4*nn))/nn)) / (1 + z*z/nn)
 }
 
-// valid: Folge nutzt nur die 4 Signature-Faehigkeiten des Helden, jede hoechstens 4x.
+// valid: the sequence only uses the hero's 4 signature abilities, each at most 4 times.
 func validSeq(key string, seq []uint32) bool {
 	ha, ok := heroAbil[key]
 	if !ok || len(seq) < 12 || len(seq) > 16 {
@@ -109,7 +109,7 @@ func (s *Skills) fetchHero(key string, heroID uint32) (skillEntry, error) {
 	var rows []abRow
 	try := func(q string) error {
 		req, _ := http.NewRequest("GET", fmt.Sprintf("%s/v1/analytics/ability-order-stats?hero_id=%d&%s", s.api, heroID, q), nil)
-		req.Header.Set("User-Agent", "DeadlockCounterBuild/1.0 (lokales Privatprojekt)")
+		req.Header.Set("User-Agent", "DeadlockCounterBuild/1.0 (local hobby project)")
 		resp, err := s.client.Do(req)
 		if err != nil {
 			return err
@@ -135,8 +135,8 @@ func (s *Skills) fetchHero(key string, heroID uint32) (skillEntry, error) {
 	if err != nil {
 		return skillEntry{}, err
 	}
-	// Nur gut belegte Reihenfolgen: mindestens 100 Matches UND mindestens 4 % aller beobachteten Matches
-	// (verhindert z.B. 86 % Siegrate bei 38 Matches). Danach beste Wilson-Untergrenze.
+	// Only well-supported orders: at least 100 matches AND at least 4 % of all observed matches
+	// (prevents e.g. an 86 % win rate over 38 matches). Then best Wilson lower bound.
 	var total uint64
 	for _, r := range rows {
 		if validSeq(key, r.Abilities) {
@@ -153,7 +153,7 @@ func (s *Skills) fetchHero(key string, heroID uint32) (skillEntry, error) {
 			elig = append(elig, r)
 		}
 	}
-	if len(elig) == 0 { // wenig Daten: die meistgespielte gueltige Reihenfolge
+	if len(elig) == 0 { // little data: the most played valid order
 		for _, r := range rows {
 			if r.Matches >= 30 && validSeq(key, r.Abilities) {
 				elig = append(elig, r)
@@ -171,7 +171,7 @@ func (s *Skills) fetchHero(key string, heroID uint32) (skillEntry, error) {
 		r := elig[0]
 		return skillEntry{Seq: r.Abilities, Wins: r.Wins, Matches: r.Matches, At: time.Now().Unix()}, nil
 	}
-	return skillEntry{}, fmt.Errorf("keine passende Reihenfolge (%d Zeilen)", len(rows))
+	return skillEntry{}, fmt.Errorf("no matching order (%d rows)", len(rows))
 }
 
 func (s *Skills) start(force bool) bool {
@@ -202,7 +202,7 @@ func (s *Skills) start(force bool) bool {
 				ok++
 				s.m[key] = e
 			}
-			s.status = fmt.Sprintf("Skill-Daten: %d geladen, %d fehlgeschlagen", ok, fail)
+			s.status = fmt.Sprintf("Skill data: %d loaded, %d failed", ok, fail)
 			s.mu.Unlock()
 			time.Sleep(120 * time.Millisecond)
 		}
@@ -213,7 +213,7 @@ func (s *Skills) start(force bool) bool {
 			}
 		}
 		if lastErr != nil && ok == 0 {
-			s.status = "Skill-Daten nicht ladbar: " + lastErr.Error()
+			s.status = "Skill data unavailable: " + lastErr.Error()
 		}
 		s.running = false
 		s.mu.Unlock()
@@ -221,18 +221,18 @@ func (s *Skills) start(force bool) bool {
 	return true
 }
 
-// info: Reihenfolge fuer den Anzeige-/Export-Zweck.
+// info: order for display/export purposes.
 type SkillInfo struct {
 	Source  string   `json:"source"` // "live" | "vorlage"
 	Matches uint64   `json:"matches"`
 	WR      float64  `json:"wr"`
-	Steps   []string `json:"steps"` // Faehigkeitsname je Punkt
+	Steps   []string `json:"steps"` // ability name per point
 }
 
 func (s *Skills) seqFor(key string) ([]uint32, SkillInfo) {
 	ha, ok := heroAbil[key]
 	if !ok {
-		return nil, SkillInfo{Source: "keine"}
+		return nil, SkillInfo{Source: "none"}
 	}
 	if s != nil {
 		s.mu.Lock()
@@ -250,10 +250,10 @@ func (s *Skills) seqFor(key string) ([]uint32, SkillInfo) {
 			return e.Seq, info
 		}
 	}
-	// Vorlage (nur Notnagel, nicht aus Matchdaten)
+	// Template (last resort, not from match data)
 	p := func(i int) uint32 { return ha.ID[ha.Order[i]-1] }
 	seq := []uint32{p(0), p(0), p(1), p(2), p(0), p(1), p(3), p(1), p(1), p(2), p(2), p(2), p(0), p(3), p(3), p(3)}
-	info := SkillInfo{Source: "vorlage"}
+	info := SkillInfo{Source: "template"}
 	for _, id := range seq {
 		for i, a := range ha.ID {
 			if a == id {

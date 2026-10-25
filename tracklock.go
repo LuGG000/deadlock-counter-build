@@ -1,9 +1,9 @@
 package main
 
-// Live-Builds von tracklock.gg: beim Start (max. alle 24 h) wird je Held die Build-Seite geladen,
-// Core/Early/Late werden aus den Item-Bildern in Reihenfolge gelesen und ersetzen den eingebauten Snapshot.
-// Sicherheitsnetz: Wird eine Seite nicht sauber erkannt (unbekannte Items, zu wenige Core-Items,
-// Netzfehler), bleibt der Snapshot fuer diesen Helden unveraendert.
+// Live builds from tracklock.gg: at startup (at most every 24 h) each hero's build page is loaded,
+// Core/Early/Late are read in order from the item images and replace the built-in snapshot.
+// Safety net: if a page is not recognised cleanly (unknown items, too few core items,
+// network error), the snapshot for that hero stays unchanged.
 
 import (
 	"encoding/json"
@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-var netEnabled bool // wird in main gesetzt (false bei -no-icons und in Tests)
+var netEnabled bool // set in main (false with -no-icons and in tests)
 
 type tlBuild struct {
 	Core, Early, Late []string
@@ -31,7 +31,7 @@ type tlBuild struct {
 	At                int64
 }
 
-var tlStatus = "Tracklock-Sync: nicht ausgefuehrt"
+var tlStatus = "Tracklock sync: not run"
 
 var (
 	reTok     = regexp.MustCompile(`(?is)<img\b[^>]*>|>([^<>]+)<`)
@@ -66,7 +66,7 @@ func heroSlugs(name string) []string {
 	return out
 }
 
-// itemResolver: Bild-Slug / alt-Text / Name -> Item
+// itemResolver: image slug / alt text / name -> Item
 func (d *Data) resolveItem(alt, slug string) *Item {
 	for _, k := range []string{norm(alt), norm(slug)} {
 		if k == "" {
@@ -85,7 +85,7 @@ func (d *Data) resolveItem(alt, slug string) *Item {
 	return nil
 }
 
-// parseTracklockHTML liest die Sektionen eines Build-Seiten-HTML. Gibt unaufgeloeste Items zurueck.
+// parseTracklockHTML reads the sections of a build page's HTML. Returns unresolved items.
 func parseTracklockHTML(d *Data, page string) (b tlBuild, unresolved []string) {
 	section := ""
 	seen := map[string]bool{}
@@ -105,7 +105,7 @@ func parseTracklockHTML(d *Data, page string) (b tlBuild, unresolved []string) {
 		}
 	}
 	for _, m := range reTok.FindAllStringSubmatch(page, -1) {
-		if m[1] != "" { // Textknoten
+		if m[1] != "" { // text node
 			t := strings.TrimSpace(html.UnescapeString(m[1]))
 			if len(t) > 40 {
 				continue
@@ -184,7 +184,7 @@ var tlClient = &http.Client{Timeout: 8 * time.Second}
 
 func tlFetch(slug string) (string, error) {
 	req, _ := http.NewRequest("GET", "https://tracklock.gg/heroes/"+slug+"/build", nil)
-	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; DeadlockCounterBuild/1.0; privates Hobbyprojekt)")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; DeadlockCounterBuild/1.0; hobby project)")
 	req.Header.Set("Accept", "text/html")
 	resp, err := tlClient.Do(req)
 	if err != nil {
@@ -198,7 +198,7 @@ func tlFetch(slug string) (string, error) {
 	return string(b), err
 }
 
-// applyTracklock: Cache laden, ggf. frisch holen, auf die Helden anwenden. Muss VOR deriveMissing laufen.
+// applyTracklock: load the cache, fetch fresh data if needed, apply it to the heroes. Must run BEFORE deriveMissing.
 func applyTracklock(d *Data) {
 	path := filepath.Join(appDir(), "tracklock_cache.json")
 	cache := map[string]tlBuild{}
@@ -242,7 +242,7 @@ func applyTracklock(d *Data) {
 					}
 					b, unres := parseTracklockHTML(d, page)
 					if !tlValid(b) {
-						lastErr = fmt.Sprintf("%s: Seite nicht erkannt (%d Core-Items, unbekannt: %s)", slug, len(b.Core), strings.Join(firstN(unres, 3), ", "))
+						lastErr = fmt.Sprintf("%s: page not recognised (%d core items, unknown: %s)", slug, len(b.Core), strings.Join(firstN(unres, 3), ", "))
 						mu.Lock()
 						if firstErr == "" {
 							_ = os.WriteFile(filepath.Join(appDir(), "tracklock_debug.html"), []byte(page), 0644)
@@ -251,7 +251,7 @@ func applyTracklock(d *Data) {
 						continue
 					}
 					if len(unres) > 0 {
-						log.Printf("Tracklock %s: unbekannte Items ignoriert: %s", h.Name, strings.Join(unres, ", "))
+						log.Printf("Tracklock %s: unknown items ignored: %s", h.Name, strings.Join(unres, ", "))
 					}
 					b.At = time.Now().Unix()
 					if wm := reMatches.FindStringSubmatch(page); wm != nil {
@@ -280,12 +280,12 @@ func applyTracklock(d *Data) {
 			note = "live"
 		}
 		if ok == 0 {
-			tlStatus = "Tracklock-Sync nicht moeglich (" + shortErr(fmt.Errorf("%s", firstErr)) + ") – eingebauter Stand"
+			tlStatus = "Tracklock sync unavailable (" + shortErr(fmt.Errorf("%s", firstErr)) + ") - using built-in snapshot"
 			if len(cache) == 0 {
 				return
 			}
 		} else if fail > 0 {
-			tlStatus = fmt.Sprintf("Tracklock-Sync: %d Helden live, %d unveraendert (%s)", ok, fail, shortErr(fmt.Errorf("%s", firstErr)))
+			tlStatus = fmt.Sprintf("Tracklock sync: %d heroes live, %d unchanged (%s)", ok, fail, shortErr(fmt.Errorf("%s", firstErr)))
 		}
 	}
 	if len(cache) == 0 {
@@ -313,8 +313,8 @@ func applyTracklock(d *Data) {
 		h.HasBuild, h.Derived = true, false
 		n++
 	}
-	if n > 0 && strings.HasPrefix(tlStatus, "Tracklock-Sync: nicht") {
-		tlStatus = fmt.Sprintf("Tracklock-Sync (%s): %d Builds", note, n)
+	if n > 0 && strings.HasPrefix(tlStatus, "Tracklock sync: not") {
+		tlStatus = fmt.Sprintf("Tracklock sync (%s): %d builds", note, n)
 	}
 	log.Print(tlStatus)
 }

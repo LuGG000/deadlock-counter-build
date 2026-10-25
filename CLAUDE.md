@@ -33,5 +33,4 @@ Flags: `-port`, `-nobrowser`, `-no-icons` (disables all network access, includin
 
 ## Conventions
 
-- UI text and README are German, code identifiers and comments are English.
 - Hero/item names are matched through `norm()` / `nk()` normalization (lowercase, no special characters); use these instead of comparing raw names.

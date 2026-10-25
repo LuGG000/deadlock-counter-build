@@ -1,8 +1,8 @@
 package main
 
-// Live-Sync: haelt Items (Kosten/Tier, neue Items) und Helden-IDs/Faehigkeiten-IDs aktuell,
-// aus der Asset-API (dieselbe Quelle wie die Icons). Cache: live_cache.json neben der exe (24h).
-// Laeuft einmal beim Start, bevor der Server Anfragen bedient (kein Locking noetig).
+// Live sync: keeps items (cost/tier, new items) and hero IDs/ability IDs up to date
+// from the asset API (same source as the icons). Cache: live_cache.json next to the exe (24h).
+// Runs once at startup before the server handles requests (no locking needed).
 
 import (
 	"encoding/json"
@@ -35,7 +35,7 @@ type liveCache struct {
 	Heroes []liveHero `json:"heroes"`
 }
 
-var syncStatus = "Live-Sync: nicht ausgefuehrt"
+var syncStatus = "Live sync: not run"
 
 var reDigits = regexp.MustCompile(`\d+`)
 
@@ -117,7 +117,7 @@ func parseLiveHeroes(list []map[string]any) []liveHero {
 	return out
 }
 
-// syncLive laedt (oder nimmt den frischen Cache) und wendet die Daten an.
+// syncLive loads (or takes the fresh cache) and applies the data.
 func syncLive(d *Data, ic *Icons) {
 	path := filepath.Join(appDir(), "live_cache.json")
 	var c liveCache
@@ -143,14 +143,14 @@ func syncLive(d *Data, ic *Icons) {
 			if err == nil {
 				err = e2
 			}
-			syncStatus = "Live-Sync nicht moeglich (" + shortErr(err) + ") – eingebaute Daten"
+			syncStatus = "Live sync unavailable (" + shortErr(err) + ") - using built-in data"
 			return
 		} else {
 			note = "Cache (offline)"
 		}
 	}
 	if len(c.Items) == 0 {
-		syncStatus = "Live-Sync aus"
+		syncStatus = "Live sync off"
 		return
 	}
 	byClass := map[string]*Item{}
@@ -184,7 +184,7 @@ func syncLive(d *Data, ic *Icons) {
 		}
 		cat := map[string]string{"W": "Weapon", "V": "Vitality", "S": "Spirit"}[li.Slot]
 		it := &Item{Name: li.Name, IName: li.Class, Cat: cat, Tier: li.Tier, Cost: li.Cost, key: key, grp: -1, ci: -1,
-			Tip: "Neues Item (automatisch geladen) – noch nicht in der Bewertung"}
+			Tip: "New item (loaded automatically) - not yet in the scoring"}
 		if ci, ok := catIdx[cat]; ok {
 			it.ci = ci
 		}
@@ -194,7 +194,7 @@ func syncLive(d *Data, ic *Icons) {
 		add++
 		added = append(added, li.Name)
 	}
-	// Hero-IDs: bestehende werden NIE ueberschrieben (Schutz vor falsch gedeutetem Format); nur fehlende ergaenzt.
+	// Hero IDs: existing ones are NEVER overwritten (protects against a misread format); only missing ones are added.
 	idKnown := map[uint32]bool{}
 	for _, id := range heroIDs {
 		idKnown[id] = true
@@ -211,7 +211,7 @@ func syncLive(d *Data, ic *Icons) {
 		if !inCat && !idKnown[lh.ID] && !strings.Contains(lh.Class, "base") && !strings.Contains(lh.Class, "test") {
 			newHeroes = append(newHeroes, lh.Name)
 		}
-		// Faehigkeiten: nur uebernehmen, wenn mindestens eine ID zur bekannten passt (Format bestaetigt)
+		// Abilities: only adopt if at least one ID matches a known one (format confirmed)
 		if ha, ok := heroAbil[k]; ok && len(lh.Abil) == 4 {
 			var ids [4]uint32
 			match, all := 0, true
@@ -232,15 +232,15 @@ func syncLive(d *Data, ic *Icons) {
 			}
 		}
 	}
-	msg := fmt.Sprintf("Live-Sync (%s): %d Items aktualisiert, %d neu", note, upd, add)
+	msg := fmt.Sprintf("Live sync (%s): %d items updated, %d new", note, upd, add)
 	if len(added) > 0 {
 		msg += " (" + strings.Join(firstN(added, 5), ", ") + ")"
 	}
 	if idUpd+abUpd > 0 {
-		msg += fmt.Sprintf(", %d Hero-IDs/%d Faehigkeiten angepasst", idUpd, abUpd)
+		msg += fmt.Sprintf(", %d hero IDs/%d abilities updated", idUpd, abUpd)
 	}
 	if len(newHeroes) > 0 {
-		msg += " · neue Helden ohne Katalogdaten: " + strings.Join(firstN(newHeroes, 6), ", ")
+		msg += " · new heroes without catalog data: " + strings.Join(firstN(newHeroes, 6), ", ")
 	}
 	syncStatus = msg
 	log.Print(msg)

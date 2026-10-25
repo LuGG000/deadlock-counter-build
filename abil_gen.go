@@ -1,6 +1,6 @@
 package main
 
-// Generiert: Signature-Ability-IDs (Slot 1-4) und Standard-Skill-Reihenfolge (Prioritaet als Slot-Nummern) je Held.
+// Generated: signature ability IDs (slots 1-4) and default skill order (priority as slot numbers) per hero.
 var heroAbil = map[string]struct {
 	ID    [4]uint32
 	Order [4]int

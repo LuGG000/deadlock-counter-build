@@ -2,41 +2,41 @@ package main
 
 import "testing"
 
-// Jeder Held braucht ein Build, alle Items muessen in der Item-DB existieren und kaufbar sein.
+// Every hero needs a build; all items must exist in the item DB and be purchasable.
 func TestAllHeroesComplete(t *testing.T) {
 	d, err := loadData()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(d.Heroes) < 44 {
-		t.Errorf("nur %d Helden", len(d.Heroes))
+		t.Errorf("only %d heroes", len(d.Heroes))
 	}
 	for _, h := range d.Heroes {
 		if !h.HasBuild || len(h.Catalog.Core) < 8 {
-			t.Errorf("%s: kein brauchbares Build (%d Core)", h.Name, len(h.Catalog.Core))
+			t.Errorf("%s: no usable build (%d core)", h.Name, len(h.Catalog.Core))
 		}
 		if len(h.counter) == 0 {
-			t.Errorf("%s: keine Gegenitems", h.Name)
+			t.Errorf("%s: no counter items", h.Name)
 		}
 		if _, ok := heroIDs[norm(h.Name)]; !ok {
-			t.Errorf("%s: keine Hero-ID", h.Name)
+			t.Errorf("%s: no hero ID", h.Name)
 		}
 		if _, ok := heroAbil[norm(h.Name)]; !ok {
-			t.Errorf("%s: keine Faehigkeiten-IDs", h.Name)
+			t.Errorf("%s: no ability IDs", h.Name)
 		}
 		all := append(append(append([]string{}, h.Catalog.Early...), h.Catalog.Core...), h.Catalog.Late...)
 		all = append(all, h.counter...)
 		for _, n := range all {
 			it := d.ItemMap[norm(n)]
 			if it == nil {
-				t.Errorf("%s: Item %q nicht in der Item-DB", h.Name, n)
+				t.Errorf("%s: item %q not in the item DB", h.Name, n)
 				continue
 			}
 			if it.IName == "" {
-				t.Errorf("%s: Item %q ohne internal_name (nicht exportierbar)", h.Name, n)
+				t.Errorf("%s: item %q has no internal_name (not exportable)", h.Name, n)
 			}
 		}
-		// Berechnung gegen ein Beispielteam darf nicht warnen
+		// A calculation against a sample team must not warn
 		var en []*Hero
 		for _, o := range d.Heroes {
 			if o != h && len(en) < 6 {
@@ -45,10 +45,10 @@ func TestAllHeroesComplete(t *testing.T) {
 		}
 		r := d.recommend(h, en, nil, h.Catalog, 3)
 		if len(r.Final) == 0 || len(r.Final) > 12 {
-			t.Errorf("%s: Endbuild %d Items", h.Name, len(r.Final))
+			t.Errorf("%s: final build has %d items", h.Name, len(r.Final))
 		}
 		for _, w := range r.Warnings {
-			t.Errorf("%s: Warnung %s", h.Name, w)
+			t.Errorf("%s: warning %s", h.Name, w)
 		}
 	}
 }

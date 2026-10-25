@@ -1,48 +1,48 @@
 # Deadlock Counter-Build
 
-Lokales Tool (Go, nur Standardbibliothek) für Deadlock: Du wählst deinen Helden und das Gegnerteam, das Tool passt dein
-Standard-Build mit wenigen Counter-Items an und zeigt die Kaufreihenfolge. Das Build lässt sich als Ingame-Import-String exportieren.
+Local tool (Go, standard library only) for Deadlock: pick your hero and the enemy team, and the tool adjusts your
+default build with a few counter items and shows the purchase order. The build can be exported as an in-game import string.
 
-## Starten
+## Run
 
 ```
 go build -o deadlock-counter.exe .
-./deadlock-counter.exe            # öffnet http://127.0.0.1:47871
+./deadlock-counter.exe            # opens http://127.0.0.1:47871
 ```
 
-Optionen: `-port`, `-nobrowser`, `-no-icons` (schaltet jeden Netzzugriff ab), `-no-update`, `-assets-api <url>`.
-Windows-Build aus Linux: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w"`.
+Options: `-port`, `-nobrowser`, `-no-icons` (disables all network access), `-no-update`, `-assets-api <url>`.
+Windows build from Linux: `GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags "-s -w"`.
 
-## Funktionen
+## Features
 
-- Bewertung der Items nach Gegnerzusammensetzung (Counter-Regeln, Teamprofil, Schutz des Schadens-Kerns), Berechnung in ~100 µs.
-- Kaufreihenfolge (Endbuild, max. 12 Slots) und Export als Ingame-Build (Base64 → Zstd → Protobuf `CMsgHeroBuild`),
-  inklusive Skill-Reihenfolge und „Optional“-Kategorien.
-- Eigene Default-Builds pro Held (`defaults.json`), Icons, Rechtsklick/Reset im Matchup.
-- Live-Daten (beim Start, Cache 24 h): Item-Werte und IDs aus der Asset-API, Skill-Reihenfolgen aus Matchdaten der deadlock-api,
-  Builds von tracklock.gg. Schlägt ein Abruf fehl, gilt der eingebaute Stand.
+- Item scoring based on the enemy composition (counter rules, team profile, protection of the damage core), computed in ~100 µs.
+- Purchase order (final build, max. 12 slots) and export as an in-game build (Base64 → Zstd → Protobuf `CMsgHeroBuild`),
+  including skill order and "Optional" categories.
+- Custom default builds per hero (`defaults.json`), icons, right-click/reset in the matchup.
+- Live data (at startup, cached for 24 h): item values and IDs from the asset API, skill orders from deadlock-api match data,
+  builds from tracklock.gg. If a request fails, the built-in snapshot is used.
 
-## Daten
+## Data
 
-`data/items.json` und `data/heroes.md` sind eingebettet (Stand 22.10.2026). Liegen `deadlock_items_*.json` oder
-`deadlock_hero_catalog.md` neben der exe, haben diese Vorrang. Helden ohne Tracklock-Build bekommen ein aus ähnlichen
-Helden abgeleitetes Build (im Tool markiert).
+`data/items.json` and `data/heroes.md` are embedded (as of 22 Oct 2026). If `deadlock_items_*.json` or
+`deadlock_hero_catalog.md` are placed next to the exe, they take precedence. Heroes without a Tracklock build get a build
+derived from similar heroes (marked in the tool).
 
-## Einstellungen (nicht im Repo)
+## Settings (not in the repo)
 
-`settings.json` neben der exe: `{"author_account_id": 123456789}` – die Steam32-ID steht in jedem eigenen Ingame-Export-String.
+`settings.json` next to the exe: `{"author_account_id": 123456789}` – the Steam32 ID is embedded in every own in-game export string.
+
+## Updates and releases
+
+At startup the exe checks the latest GitHub release. If it is newer than the running version, the exe downloads
+`deadlock-counter.exe` (SHA-256 check), replaces itself and restarts. Failures are only logged. Development builds
+(`version = "dev"`) and `-no-icons` / `-no-update` skip the check.
+
+To create a release, push a tag `vX.Y.Z`. The workflow `.github/workflows/release.yml` runs the tests, builds the Windows exe
+with the embedded version and creates the release.
 
 ## Tests
 
 ```
 go test ./...
 ```
-
-## Updates und Releases
-
-Beim Start prüft die exe das neueste GitHub-Release. Ist es neuer als die eigene Version, lädt sie `deadlock-counter.exe`
-herunter (SHA-256-Prüfung), ersetzt sich selbst und startet neu. Fehler werden nur geloggt. Entwicklungs-Builds (`version = "dev"`)
-und `-no-icons` / `-no-update` suchen nicht.
-
-Release erstellen: Tag `vX.Y.Z` pushen. Der Workflow `.github/workflows/release.yml` testet, baut die Windows-exe mit
-eingebetteter Version und legt das Release an.

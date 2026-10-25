@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -138,21 +138,21 @@ details.card[open]>summary{margin-bottom:10px}
 <main>
 <section>
   <div class="card">
-    <h2><span class="stepn">1</span> Dein Held &amp; <span class="stepn">2</span> Gegnerteam</h2>
-    <div style="float:right"><button id="bReset" title="Held und Gegnerteam zurücksetzen">↺ Matchup zurücksetzen</button></div>
-    <p class="hint" style="margin:0 0 10px">Slot anklicken, dann Held in der Liste wählen. Rechtsklick auf einen Slot entfernt den Helden. ⚔ markiert den direkten Lane-Gegner.</p>
+    <h2><span class="stepn">1</span> Your hero &amp; <span class="stepn">2</span> Enemy team</h2>
+    <div style="float:right"><button id="bReset" title="Reset hero and enemy team">↺ Reset matchup</button></div>
+    <p class="hint" style="margin:0 0 10px">Click a slot, then pick a hero from the list. Right-click a slot to remove the hero. ⚔ marks the direct lane opponent.</p>
     <div id="slots"></div>
-    <input id="hsearch" placeholder="Held suchen…" autocomplete="off">
+    <input id="hsearch" placeholder="Search hero…" autocomplete="off">
     <div id="grid"></div>
   </div>
   <details class="card" id="editor">
-    <summary><h2 style="display:inline">Dein Standard-Build bearbeiten <span class="kv">(optional)</span></h2></summary>
+    <summary><h2 style="display:inline">Edit your default build <span class="kv">(optional)</span></h2></summary>
     <div id="derivednote" class="warn" style="margin:8px 0"></div>
     <div class="bar" id="bar"></div>
     <div id="zones"></div>
   </details>
 </section>
-<section><div class="card" id="result"><p class="hint">Wähle links deinen Helden und das Gegnerteam.</p></div></section>
+<section><div class="card" id="result"><p class="hint">Pick your hero and the enemy team on the left.</p></div></section>
 </main>
 <script>
 const S={tab:'or',data:null,items:{},me:null,enemies:[null,null,null,null,null,null],lane:null,active:'me',
@@ -166,13 +166,13 @@ async function api(url,method,body){
   if(!r.ok) throw new Error(await r.text());
   return r.json();
 }
-const ZN={early:'Early / Lane-Phase',core:'Core (Kaufreihenfolge)',late:'Late-Optionen'};
+const ZN={early:'Early / lane phase',core:'Core (purchase order)',late:'Late options'};
 
 function hic(n,cls){const p=S.ic.heroes[n];return p?`<img class="ic ${cls||''}" src="/icons/${esc(p)}" alt="" onerror="this.remove()">`:'';}
 function iic(n){const p=S.ic.items[n];return p?`<img class="ic" src="/icons/${esc(p)}" alt="" loading="lazy" onerror="this.remove()">`:'';}
 function chip(name){
   const it=S.items[name];
-  if(!it) return `<span class="it c-X" title="unbekanntes Item">${esc(name)}</span>`;
+  if(!it) return `<span class="it c-X" title="unknown item">${esc(name)}</span>`;
   return `<span class="it c-${it.cat[0]}" title="${esc(it.tip)}">${iic(name)}${esc(name)} <small>T${it.tier} · ${it.cost}</small></span>`;
 }
 function baseBuild(){
@@ -182,12 +182,12 @@ function baseBuild(){
 function isSaved(){return !!(S.me&&S.data.defaults[S.me]);}
 function dirty(){return JSON.stringify(S.build)!==JSON.stringify(baseBuild());}
 
-/* ---------- Team / Heldenwahl ---------- */
+/* ---------- Team / hero selection ---------- */
 function renderSlots(){
-  let h=`<div class="slot me ${S.active==='me'?'on':''} ${S.me&&S.ic.heroes[S.me]?'hasic':''}" data-s="me">${S.me?hic(S.me,'h'):''}<small>ICH</small><b>${esc(S.me||'– wählen –')}</b></div><span class="vs">vs</span>`;
+  let h=`<div class="slot me ${S.active==='me'?'on':''} ${S.me&&S.ic.heroes[S.me]?'hasic':''}" data-s="me">${S.me?hic(S.me,'h'):''}<small>ME</small><b>${esc(S.me||'– select –')}</b></div><span class="vs">vs</span>`;
   S.enemies.forEach((n,i)=>{
-    h+=`<div class="slot ${S.active===i?'on':''} ${n&&S.ic.heroes[n]?'hasic':''}" data-s="${i}">${n?hic(n,'h'):''}<small>GEGNER ${i+1}</small><b>${n?esc(n):'–'}</b>`+
-       (n?`<button class="lane ${S.lane===n?'on':''}" data-lane="${i}" title="Direkter Lane-Gegner (zählt mehr)">⚔</button><button class="x" data-clear="${i}" title="entfernen">×</button>`:'')+`</div>`;
+    h+=`<div class="slot ${S.active===i?'on':''} ${n&&S.ic.heroes[n]?'hasic':''}" data-s="${i}">${n?hic(n,'h'):''}<small>ENEMY ${i+1}</small><b>${n?esc(n):'–'}</b>`+
+       (n?`<button class="lane ${S.lane===n?'on':''}" data-lane="${i}" title="Direct lane opponent (counts more)">⚔</button><button class="x" data-clear="${i}" title="remove">×</button>`:'')+`</div>`;
   });
   $('#slots').innerHTML=h;
 }
@@ -209,10 +209,10 @@ function pick(name){
   renderSlots();renderGrid();schedule();
 }
 
-/* ---------- Build-Editor ---------- */
+/* ---------- Build editor ---------- */
 function initZones(){
-  $('#zones').innerHTML=['early','core','late'].map(z=>`<div class="zone" data-z="${z}"><h3>${ZN[z]}${z==='core'?' <span style="font-weight:400">(erste 8 werden nur bei starkem Grund getauscht)</span>':''}</h3><ol></ol>
-  <div class="add"><input data-z="${z}" placeholder="+ Item hinzufügen (tippen oder klicken)…" autocomplete="off"><div class="dd" hidden></div></div></div>`).join('');
+  $('#zones').innerHTML=['early','core','late'].map(z=>`<div class="zone" data-z="${z}"><h3>${ZN[z]}${z==='core'?' <span style="font-weight:400">(the first 8 are only swapped for a strong reason)</span>':''}</h3><ol></ol>
+  <div class="add"><input data-z="${z}" placeholder="+ Add item (type or click)…" autocomplete="off"><div class="dd" hidden></div></div></div>`).join('');
 }
 function renderLists(){
   for(const z of ['early','core','late']){
@@ -221,16 +221,16 @@ function renderLists(){
       const r=S.repl[n]&&z!=='early';
       return `<li class="${z==='core'&&i<8?'prot':''} ${r?'out':''}"><span class="n">${i+1}</span>${chip(n)}${r?`<em>→ ${esc(S.repl[n])}</em>`:''}
       <span class="btns"><button data-a="up" data-z="${z}" data-i="${i}">↑</button><button data-a="dn" data-z="${z}" data-i="${i}">↓</button><button data-a="del" data-z="${z}" data-i="${i}">×</button></span></li>`;
-    }).join('')||'<li class="hint">– leer –</li>';
+    }).join('')||'<li class="hint">– empty –</li>';
   }
 }
 function renderBar(){
-  {const h=S.me&&S.data.heroes.find(x=>x.name===S.me);const el=$('#derivednote');if(el)el.textContent=h&&h.derived?'Für diesen Helden gibt es keine Tracklock-Daten. Das Build wurde aus ähnlichen Helden abgeleitet – bitte prüfen und als Default speichern.':'';}
-  const st=S.me?(isSaved()?'Basis: dein gespeicherter Default':'Basis: Tracklock-Katalog'):'';
-  $('#bar').innerHTML=`<button id="bLoad">Default laden</button><button id="bSave">Als Default speichern</button>
-   ${isSaved()?'<button id="bDel">Gespeicherten Default löschen</button>':''}
-   <label class="st">Max. Swaps <select id="swaps">${[1,2,3,4,5,6].map(n=>`<option ${n===S.swaps?'selected':''}>${n}</option>`).join('')}</select></label>
-   <span class="st">${esc(st)} ${S.me&&dirty()?'<span class="dirty">· geändert</span>':''} ${esc(S.msg)}</span>`;
+  {const h=S.me&&S.data.heroes.find(x=>x.name===S.me);const el=$('#derivednote');if(el)el.textContent=h&&h.derived?'There is no Tracklock data for this hero. The build was derived from similar heroes - please review it and save it as default.':'';}
+  const st=S.me?(isSaved()?'Base: your saved default':'Base: Tracklock catalog'):'';
+  $('#bar').innerHTML=`<button id="bLoad">Load default</button><button id="bSave">Save as default</button>
+   ${isSaved()?'<button id="bDel">Delete saved default</button>':''}
+   <label class="st">Max swaps <select id="swaps">${[1,2,3,4,5,6].map(n=>`<option ${n===S.swaps?'selected':''}>${n}</option>`).join('')}</select></label>
+   <span class="st">${esc(st)} ${S.me&&dirty()?'<span class="dirty">· modified</span>':''} ${esc(S.msg)}</span>`;
 }
 function addItem(z,name){
   if(!S.me) return;
@@ -239,31 +239,31 @@ function addItem(z,name){
 function showDD(input){
   const z=input.dataset.z,q=input.value.trim().toLowerCase(),dd=input.nextElementSibling;
   const list=S.data.items.filter(it=>!q||it.name.toLowerCase().includes(q));
-  dd.innerHTML=list.map((it,i)=>`<div class="${i===0&&q?'hl':''}" data-add="${esc(it.name)}"><span class="it c-${it.cat[0]}">${iic(it.name)}${esc(it.name)}</span><small>T${it.tier} · ${it.cost}${it.active?' · aktiv':''}</small></div>`).join('')||'<div>nichts gefunden</div>';
+  dd.innerHTML=list.map((it,i)=>`<div class="${i===0&&q?'hl':''}" data-add="${esc(it.name)}"><span class="it c-${it.cat[0]}">${iic(it.name)}${esc(it.name)}</span><small>T${it.tier} · ${it.cost}${it.active?' · active':''}</small></div>`).join('')||'<div>nothing found</div>';
   dd.hidden=false;
 }
 
-/* ---------- Ergebnis ---------- */
+/* ---------- Result ---------- */
 function pill(label,arr){return `<span class="pill" title="${esc(arr.join(', ')||'-')}">${label} <b>${arr.length}</b></span>`;}
 function renderAnalysis(r){
   const P=r.profile;let h='';
-  h+=`<h2>Gegner-Profil</h2><div class="pills">${pill('Gun-Carries',P.gun)}${pill('Spirit-Burst',P.spirit)}${pill('CC',P.cc)}${pill('Heilung',P.heal)}${pill('Tanks',P.tank)}${pill('Mobil',P.mobile)}${pill('Slow',P.slow)}</div>`;
+  h+=`<h2>Enemy profile</h2><div class="pills">${pill('Gun carries',P.gun)}${pill('Spirit burst',P.spirit)}${pill('CC',P.cc)}${pill('Healing',P.heal)}${pill('Tanks',P.tank)}${pill('Mobile',P.mobile)}${pill('Slow',P.slow)}</div>`;
   if(r.tips.length) h+=`<ul class="plain">${r.tips.map(t=>`<li>${esc(t)}</li>`).join('')}</ul>`;
   if(r.ranking.length){
-    h+=`<h2>Beste Counter-Items (kein Build hinterlegt – füge links Items hinzu)</h2>`+r.ranking.map(x=>`<div class="swap"><div class="sw">${chip(x.item)}<em class="kv">Score ${x.score}</em></div><p>${esc(x.why)}</p></div>`).join('');
+    h+=`<h2>Best counter items (no build set - add items on the left)</h2>`+r.ranking.map(x=>`<div class="swap"><div class="sw">${chip(x.item)}<em class="kv">Score ${x.score}</em></div><p>${esc(x.why)}</p></div>`).join('');
   }else{
-    h+=`<h2>Empfohlene Swaps</h2>`;
-    h+=r.swaps.length?r.swaps.map(s=>`<div class="swap"><div class="sw"><span class="rem">${chip(s.remove)}</span><b>→</b><span class="add2">${chip(s.add)}</span><em class="kv">${esc(s.zone)} · Score ${s.score}</em></div><p>weil: ${esc(s.why)}</p>${s.notes.map(n=>`<p class="note">${esc(n)}</p>`).join('')}</div>`).join(''):'<p class="hint">Keine Swaps nötig – dein Build passt zu diesem Matchup.</p>';
-    if(r.fallback.length) h+=`<h2>Rückfall-Optionen</h2>`+r.fallback.map(x=>`<div class="kv">${chip(x.item)} Score ${x.score} – ${esc(x.why)}</div>`).join('');
+    h+=`<h2>Recommended swaps</h2>`;
+    h+=r.swaps.length?r.swaps.map(s=>`<div class="swap"><div class="sw"><span class="rem">${chip(s.remove)}</span><b>→</b><span class="add2">${chip(s.add)}</span><em class="kv">${esc(s.zone)} · Score ${s.score}</em></div><p>because: ${esc(s.why)}</p>${s.notes.map(n=>`<p class="note">${esc(n)}</p>`).join('')}</div>`).join(''):'<p class="hint">No swaps needed - your build fits this matchup.</p>';
+    if(r.fallback.length) h+=`<h2>Fallback options</h2>`+r.fallback.map(x=>`<div class="kv">${chip(x.item)} Score ${x.score} – ${esc(x.why)}</div>`).join('');
     const seq=(arr)=>arr.map(n=>S.repl[n]?`<span class="new">${esc(S.repl[n])}</span>`:esc(n)).join(' › ');
-    h+=`<h2 style="margin-top:12px">Angepasstes Build</h2><div class="seq"><p><b>Early:</b> ${S.build.early.map(esc).join(', ')||'–'}</p><p><b>Core:</b> ${seq(S.build.core)||'–'}</p><p><b>Late:</b> ${seq(S.build.late)||'–'}</p></div>`;
+    h+=`<h2 style="margin-top:12px">Adjusted build</h2><div class="seq"><p><b>Early:</b> ${S.build.early.map(esc).join(', ')||'–'}</p><p><b>Core:</b> ${seq(S.build.core)||'–'}</p><p><b>Late:</b> ${seq(S.build.late)||'–'}</p></div>`;
     const c=r.check;
-    h+=`<p class="kv">Check: ${c.slots}/${c.maxSlots} Slots · ${c.actives}/4 Aktive · Investment W/V/S ${c.invest.join(' / ')} Souls</p>`;
+    h+=`<p class="kv">Check: ${c.slots}/${c.maxSlots} slots · ${c.actives}/4 actives · investment W/V/S ${c.invest.join(' / ')} souls</p>`;
   }
   if(r.warnings.length) h+=r.warnings.map(w=>`<div class="warn">${esc(w)}</div>`).join('');
   return h;
 }
-const expHtml=()=>`<div class="exp" style="margin-top:12px"><button id="bExp" class="primary">Build für das Spiel exportieren</button> <span id="expmsg" class="kv"></span><textarea id="expout" readonly rows="3" style="display:none;width:100%;margin-top:6px;font:11px monospace"></textarea></div>`;
+const expHtml=()=>`<div class="exp" style="margin-top:12px"><button id="bExp" class="primary">Export build for the game</button> <span id="expmsg" class="kv"></span><textarea id="expout" readonly rows="3" style="display:none;width:100%;margin-top:6px;font:11px monospace"></textarea></div>`;
 function finalOrder(r){
   const F=new Set(r.final);const seen=new Set();const out=[];
   [...S.build.core,...S.build.late].forEach(n=>{const f=S.repl[n]||n;if(F.has(f)&&!seen.has(f)){seen.add(f);out.push({name:f,from:S.repl[n]?n:''});}});
@@ -271,15 +271,15 @@ function finalOrder(r){
   return out;
 }
 function renderOrder(r){
-  if(r.ranking.length) return '<p class="hint">Noch kein Build hinterlegt – füge links Items hinzu.</p>';
+  if(r.ranking.length) return '<p class="hint">No build set yet - add items on the left.</p>';
   const L=finalOrder(r);let tot=0;
   let h='<div class="ord">';
   L.forEach((x,i)=>{
     const it=S.items[x.name];tot+=it?it.cost:0;
     h+=`<div class="st ${x.from?'nw':''} c-${it?it.cat[0]:'X'}"><span class="no">${i+1}</span><span>${x.from?`<em>${esc(x.from)}</em>`:''}${iic(x.name)}${esc(x.name)}</span><span><small>${it?it.cost:'?'}</small></span></div>`;
   });
-  h+=`</div><p class="kv" style="margin-top:10px">Endbuild: ${L.length}/12 Slots · ${tot} Souls · von links nach rechts kaufen · grün = Counter-Tausch (ersetzt das durchgestrichene Item). Early-Items für die Lane sind nicht enthalten.</p>`;
-  h+=`<h2 style="margin-top:12px">Skill-Reihenfolge</h2><div id="skl" class="kv">lädt…</div>`;
+  h+=`</div><p class="kv" style="margin-top:10px">Final build: ${L.length}/12 slots · ${tot} souls · buy from left to right · green = counter swap (replaces the struck-through item). Early lane items are not included.</p>`;
+  h+=`<h2 style="margin-top:12px">Skill order</h2><div id="skl" class="kv">loading…</div>`;
   return h+expHtml();
 }
 async function loadSkills(){
@@ -287,15 +287,15 @@ async function loadSkills(){
   try{
     const r=await api('/api/skills?hero='+encodeURIComponent(S.me));const i=r.info;
     const tags=(i.steps||[]).map((n,k)=>`<span class="it" style="margin:2px"><small>${k+1}</small> ${esc(n)}</span>`).join('');
-    const head=i.source==='live'?`<p class="kv">Aus echten Matchdaten (deadlock-api): beste Siegrate-Reihenfolge, ${i.matches} Matches, ${i.wr} % Siegrate.</p>`:`<p class="warn">Keine Live-Daten geladen – das ist nur eine Notbehelf-Vorlage, nicht aus Matchdaten. ${esc(r.status||'')}</p>`;
+    const head=i.source==='live'?`<p class="kv">From real match data (deadlock-api): best win-rate order, ${i.matches} matches, ${i.wr} % win rate.</p>`:`<p class="warn">No live data loaded - this is only a fallback template, not from match data. ${esc(r.status||'')}</p>`;
     const el2=$('#skl');if(el2)el2.innerHTML=head+tags;
-  }catch(e){const el2=$('#skl');if(el2)el2.textContent='Fehler: '+e.message;}
+  }catch(e){const el2=$('#skl');if(el2)el2.textContent='Error: '+e.message;}
 }
 function renderResult(r){
   S.last=r;
-  const tb=`<div class="tabs"><button data-tab="or" class="${S.tab==='or'?'on':''}">③ Kaufreihenfolge</button><button data-tab="an" class="${S.tab==='or'?'':'on'}">Begründung &amp; Analyse</button></div>`;
+  const tb=`<div class="tabs"><button data-tab="or" class="${S.tab==='or'?'on':''}">③ Purchase order</button><button data-tab="an" class="${S.tab==='or'?'':'on'}">Reasoning &amp; analysis</button></div>`;
   const hd=S.data.heroes.find(x=>x.name===S.me);
-  let body=(hd&&hd.derived?'<p class="warn">⚠ Für '+esc(S.me)+' gibt es keine Tracklock-Daten – das Build ist aus ähnlichen Helden abgeleitet. Bitte prüfen.</p>':'')+(S.tab==='or'?renderOrder(r):renderAnalysis(r));
+  let body=(hd&&hd.derived?'<p class="warn">⚠ '+esc(S.me)+' has no Tracklock data - the build is derived from similar heroes. Please review it.</p>':'')+(S.tab==='or'?renderOrder(r):renderAnalysis(r));
   if(S.tab!=='or'&&!r.ranking.length) body+=expHtml();
   $('#result').innerHTML=tb+body;
   if(S.tab==='or'&&!r.ranking.length)loadSkills();
@@ -303,14 +303,14 @@ function renderResult(r){
 }
 function schedule(){clearTimeout(S.timer);S.timer=setTimeout(calc,50);}
 async function calc(){
-  if(!S.me){$('#result').innerHTML='<p class="hint">Wähle links deinen Helden.</p>';return;}
+  if(!S.me){$('#result').innerHTML='<p class="hint">Pick your hero on the left.</p>';return;}
   const en=S.enemies.filter(Boolean);
-  if(!en.length){S.repl={};renderLists();$('#result').innerHTML='<p class="hint">Wähle jetzt bis zu 6 Gegner (Slot anklicken → Held). Mit ⚔ markierst du den direkten Lane-Gegner.</p>';return;}
+  if(!en.length){S.repl={};renderLists();$('#result').innerHTML='<p class="hint">Now pick up to 6 enemies (click a slot, then a hero). Use ⚔ to mark the direct lane opponent.</p>';return;}
   try{
     const r=await api('/api/calc','POST',{me:S.me,enemies:en,lane:S.lane&&en.includes(S.lane)?S.lane:'',swaps:S.swaps,build:S.build});
     S.repl={};r.swaps.forEach(s=>{S.repl[s.remove]=s.add;});
     S.last=r;renderResult(r);renderLists();
-  }catch(e){$('#result').innerHTML=`<p class="warn">Fehler: ${esc(e.message)}</p>`;}
+  }catch(e){$('#result').innerHTML=`<p class="warn">Error: ${esc(e.message)}</p>`;}
 }
 
 /* ---------- Events ---------- */
@@ -331,8 +331,8 @@ async function doExport(){
     const r=await api('/api/export','POST',{hero:S.me,name,build,counter,notes});
     o.style.display='block';o.value=r.code;o.select();
     let ok=false;try{await navigator.clipboard.writeText(r.code);ok=true;}catch(_){try{ok=document.execCommand('copy');}catch(_){}}
-    m.textContent=(ok?'In Zwischenablage kopiert · ':'Bitte manuell kopieren · ')+r.items+' Items · Skills: '+(r.skill&&r.skill.source==='live'?'Live-Daten':'NUR VORLAGE')+(r.unknown&&r.unknown.length?' · nicht exportiert: '+r.unknown.join(', '):'');
-  }catch(e){m.textContent='Fehler: '+e.message;}
+    m.textContent=(ok?'Copied to clipboard · ':'Please copy manually · ')+r.items+' items · Skills: '+(r.skill&&r.skill.source==='live'?'live data':'TEMPLATE ONLY')+(r.unknown&&r.unknown.length?' · not exported: '+r.unknown.join(', '):'');
+  }catch(e){m.textContent='Error: '+e.message;}
 }
 function resetMatchup(){
   S.me=null;S.enemies=[null,null,null,null,null,null];S.lane=null;S.active='me';
@@ -372,13 +372,13 @@ document.addEventListener('click',async e=>{
   if(t.id==='bIcons'){try{await api('/api/icons/refresh','POST',{});}catch(err){} setTimeout(pollIcons,300);return;}
   if(t.id==='bLoad'){S.build=baseBuild();S.msg='';renderLists();renderBar();schedule();return;}
   if(t.id==='bSave'&&S.me){
-    try{const r=await api('/api/default','POST',{name:S.me,build:S.build});S.data.defaults[S.me]=clone(S.build);S.msg='✔ gespeichert ('+r.path+')';}
-    catch(err){S.msg='Fehler: '+err.message;}
+    try{const r=await api('/api/default','POST',{name:S.me,build:S.build});S.data.defaults[S.me]=clone(S.build);S.msg='✔ saved ('+r.path+')';}
+    catch(err){S.msg='Error: '+err.message;}
     renderBar();return;
   }
   if(t.id==='bDel'&&S.me){
-    try{await api('/api/default?name='+encodeURIComponent(S.me),'DELETE');delete S.data.defaults[S.me];S.build=baseBuild();S.msg='Default gelöscht';}
-    catch(err){S.msg='Fehler: '+err.message;}
+    try{await api('/api/default?name='+encodeURIComponent(S.me),'DELETE');delete S.data.defaults[S.me];S.build=baseBuild();S.msg='Default deleted';}
+    catch(err){S.msg='Error: '+err.message;}
     renderLists();renderBar();schedule();return;
   }
   const add=t.closest('[data-add]');
@@ -400,11 +400,11 @@ document.addEventListener('keydown',e=>{
 
 function renderIconStatus(){
   const s=S.ic,hc=Object.keys(s.heroes).length,ic=Object.keys(s.items).length;
-  if(!s.enabled&&!hc&&!ic){$('#icst').textContent='Icons: aus';return;}
-  let t=`Icons: ${hc}/${s.heroTotal} Helden · ${ic}/${s.itemTotal} Items`;
-  if(s.running)t+=` · lädt… (${s.done+s.failed}/${s.total})`;
+  if(!s.enabled&&!hc&&!ic){$('#icst').textContent='Icons: off';return;}
+  let t=`Icons: ${hc}/${s.heroTotal} heroes · ${ic}/${s.itemTotal} items`;
+  if(s.running)t+=` · loading… (${s.done+s.failed}/${s.total})`;
   let h=esc(t);
-  if(!s.running&&(hc<s.heroTotal||ic<s.itemTotal)&&s.enabled)h+=' <button id="bIcons">Icons laden</button>';
+  if(!s.running&&(hc<s.heroTotal||ic<s.itemTotal)&&s.enabled)h+=' <button id="bIcons">Load icons</button>';
   if(s.err)h+=` <span class="warn" title="${esc(s.err)}">⚠ ${esc(s.err.slice(0,60))}</span>`;
   $('#icst').innerHTML=h;
 }
@@ -421,7 +421,7 @@ async function pollIcons(){
 async function init(){
   S.data=await api('/api/data');
   S.data.items.forEach(i=>S.items[i.name]=i);
-  $('#meta').textContent=`Build ${S.data.meta.build} · Stand ${S.data.meta.asOf} · ${S.data.heroes.length} Helden · ${S.data.items.length} Items · ${S.data.source}`;
+  $('#meta').textContent=`Build ${S.data.meta.build} · as of ${S.data.meta.asOf} · ${S.data.heroes.length} heroes · ${S.data.items.length} items · ${S.data.source}`;
   initZones();renderSlots();renderGrid();renderLists();renderBar();
   pollIcons();
   api('/api/sync').then(r=>{$('#syncst').textContent=r.tracklock+' · '+r.status;}).catch(()=>{});
