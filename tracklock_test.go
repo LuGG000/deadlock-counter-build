@@ -10,6 +10,21 @@ func img(cat, slug, alt string) string {
 	return fmt.Sprintf(`<div class="x"><img alt="%s" src="https://static.bigbrain.gg/deadlock-img/assets-api-res/images/items/%s/%s.webp" loading="lazy"/><span>I</span></div>`, alt, cat, slug)
 }
 
+// An item label that starts like a section heading ("Active Reload") must not end the Core section.
+func TestParseTracklockItemLabelIsNoHeading(t *testing.T) {
+	d, err := loadData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := `<h2>Core Build</h2>` + img("weapon", "active_reload", "Active Reload") + `<span>Active Reload</span>` +
+		img("weapon", "swift_striker", "Swift Striker") + `<h2>Early</h2>` + img("weapon", "rapid_rounds", "Rapid Rounds") +
+		`<h2>Actives</h2>` + img("weapon", "metal_skin", "Metal Skin")
+	b, _ := parseTracklockHTML(d, page)
+	if len(b.Core) != 2 || len(b.Early) != 1 {
+		t.Errorf("core %v early %v", b.Core, b.Early)
+	}
+}
+
 // The live page splits numbers and labels with React comment markers.
 func TestParseTracklockWinRateAndMatches(t *testing.T) {
 	d, err := loadData()

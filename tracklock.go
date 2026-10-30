@@ -39,7 +39,8 @@ var (
 	reAttrSrc = regexp.MustCompile(`(?is)\b(?:src|srcset|data-src)\s*=\s*"([^"]+)"`)
 	reAttrAlt = regexp.MustCompile(`(?is)\b(?:alt|title)\s*=\s*"([^"]*)"`)
 	reSlug    = regexp.MustCompile(`/images/items/[a-z_]+/([a-z0-9_]+)\.(?:webp|png|jpg|svg)`)
-	reSection = regexp.MustCompile(`(?i)^(core(?: build)?|early(?: game)?|late(?: game)?|defensives?|counter picks?|actives?)\b`)
+	// Whole-text match: item labels such as "Active Reload" must not be taken for the "Actives" heading.
+	reSection = regexp.MustCompile(`(?i)^(core(?: build)?|early(?: game)?|late(?: game)?|defensives?|counter picks?|actives?)$`)
 	reWR      = regexp.MustCompile(`(?i)(\d{2}(?:\.\d+)?)\s*%\s*(?:win rate|wr)?`)
 	reWRLabel = regexp.MustCompile(`(?i)\b(?:win rate|wr)\b`)
 	reMatches = regexp.MustCompile(`(?i)([\d.,]+)\s*(?:matches|games)`)
