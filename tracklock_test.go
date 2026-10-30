@@ -34,6 +34,9 @@ func TestParseTracklock(t *testing.T) {
 	if len(b.Early) != 1 || len(b.Late) != 1 {
 		t.Errorf("early/late: %v %v", b.Early, b.Late)
 	}
+	if len(b.Counter) != 1 || b.Counter[0] != "Unstoppable" {
+		t.Errorf("counter: %v", b.Counter)
+	}
 	if b.WR != 62 {
 		t.Errorf("WR %v", b.WR)
 	}

@@ -2,6 +2,43 @@ package main
 
 import "testing"
 
+func TestUnreachableHero(t *testing.T) {
+	d, err := loadData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hero := func(name string) *Hero {
+		for _, h := range d.Heroes {
+			if h.Name == name {
+				return h
+			}
+		}
+		t.Fatalf("hero %s missing", name)
+		return nil
+	}
+	cc := []*Hero{}
+	for _, h := range d.Heroes {
+		if h.isCC && h.Name != "Vindicta" && len(cc) < 4 {
+			cc = append(cc, h)
+		}
+	}
+	vin, other := hero("Vindicta"), hero("Haze")
+	vv, _ := computeVotes(vin, cc, nil)
+	ov, _ := computeVotes(other, cc, nil)
+	for _, n := range ccDefense {
+		if vv.score[nk(n)] != 0 {
+			t.Errorf("Vindicta should not value %s against CC, got %v", n, vv.score[nk(n)])
+		}
+	}
+	if ov.score[nk("Debuff Reducer")] <= 0 {
+		t.Error("a grounded hero should still value Debuff Reducer against 4 CC heroes")
+	}
+	ev, _ := computeVotes(other, []*Hero{vin}, nil)
+	if ev.score[nk("Slowing Hex")] < 2 {
+		t.Errorf("enemy Vindicta should add Slowing Hex, got %v", ev.score[nk("Slowing Hex")])
+	}
+}
+
 // Every hero needs a build; all items must exist in the item DB and be purchasable.
 func TestAllHeroesComplete(t *testing.T) {
 	d, err := loadData()

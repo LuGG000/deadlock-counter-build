@@ -96,6 +96,7 @@ type Hero struct {
 	mix                                       [3]int
 	hasMix                                    bool
 	isCC, isSilence, isHeal, isSlow, isMobile bool
+	reach                                     float64 // 0..1: how much enemies fail to reach the hero with melee/ground CC
 }
 
 type Data struct {
@@ -318,6 +319,7 @@ func parseHeroes(text string) []*Hero {
 		h.isHeal = anyOf("heal", "lifesteal")
 		h.isSlow = anyOf("slow")
 		h.isMobile = mobileRe.MatchString(h.head)
+		h.reach = unreachable[norm(h.Name)]
 		for _, c := range h.counter {
 			h.cKeys = append(h.cKeys, norm(c))
 		}
@@ -415,6 +417,15 @@ var groupDefs = []group{
 	{"Spirit-Defense", []string{"Spirit Resilience", "Witchmail", "Spellbreaker", "Counterspell", "Spirit Shielding", "Diviner's Kevlar"}, 2},
 	{"Silence/Lockdown", []string{"Cursed Relic", "Knockdown", "Silence Wave"}, 1},
 }
+
+// unreachable: heroes that melee and ground-targeted CC rarely hit (norm(name) -> 0..1).
+// Only permanently airborne heroes belong here; short untargetable windows do not count.
+var unreachable = map[string]float64{
+	"vindicta": 1, // Flight
+}
+
+// ccDefense: items that only pay off against CC that actually lands.
+var ccDefense = []string{"Debuff Reducer", "Unstoppable"}
 
 var itemGroup = map[string]int{}
 
@@ -612,6 +623,22 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 	}
 	if len(prof.Slow) >= 3 {
 		V.rule("Debuff Reducer", 1.5, fmt.Sprintf("%d slow heroes", len(prof.Slow)))
+	}
+	for _, e := range enemies {
+		if e.reach > 0 {
+			V.rule("Slowing Hex", 2, e.Name+" flies (Slowing Hex disables Flight)")
+		}
+	}
+	if me.reach > 0 {
+		// Melee and ground CC rarely land: CC defense is worth less, other defense slightly less.
+		for _, n := range ccDefense {
+			V.score[nk(n)] *= 1 - me.reach
+		}
+		for _, g := range groupDefs[2:4] {
+			for _, n := range g.names {
+				V.penalty(n, me.reach)
+			}
+		}
 	}
 	if ms < 25 {
 		V.penalty("Healbane", 3)

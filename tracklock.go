@@ -26,6 +26,7 @@ var netEnabled bool // set in main (false with -no-icons and in tests)
 
 type tlBuild struct {
 	Core, Early, Late []string
+	Counter           []string // items recommended against this hero
 	WR                float64
 	Matches           int
 	At                int64
@@ -102,6 +103,8 @@ func parseTracklockHTML(d *Data, page string) (b tlBuild, unresolved []string) {
 			b.Early = append(b.Early, it.Name)
 		case "late":
 			b.Late = append(b.Late, it.Name)
+		case "counter":
+			b.Counter = append(b.Counter, it.Name)
 		}
 	}
 	for _, m := range reTok.FindAllStringSubmatch(page, -1) {
@@ -119,6 +122,8 @@ func parseTracklockHTML(d *Data, page string) (b tlBuild, unresolved []string) {
 					section = "early"
 				case strings.HasPrefix(w, "late"):
 					section = "late"
+				case strings.HasPrefix(w, "counter"):
+					section = "counter"
 				default:
 					section = "other"
 				}
@@ -210,7 +215,6 @@ func applyTracklock(d *Data) {
 		if time.Now().Unix()-e.At > 24*3600 {
 			fresh = false
 		}
-		break
 	}
 	note := "Cache"
 	if netEnabled && !fresh {
@@ -309,6 +313,12 @@ func applyTracklock(d *Data) {
 		}
 		if b.WR > 0 {
 			h.WR = b.WR
+		}
+		if len(b.Counter) > 0 {
+			h.counter, h.cKeys = b.Counter, h.cKeys[:0]
+			for _, c := range b.Counter {
+				h.cKeys = append(h.cKeys, norm(c))
+			}
 		}
 		h.HasBuild, h.Derived = true, false
 		n++
