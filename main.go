@@ -680,6 +680,7 @@ type CalcResp struct {
 	Fallback []Scored            `json:"fallback"`
 	Ranking  []Scored            `json:"ranking"`
 	Final    []string            `json:"final"`
+	Buy      []string            `json:"buy"` // core in Tracklock purchase order (components included) with the swaps applied
 	Tips     []string            `json:"tips"`
 	Warnings []string            `json:"warnings"`
 	Check    Check               `json:"check"`
@@ -784,7 +785,7 @@ var catNames = [3]string{"Weapon", "Vitality", "Spirit"}
 
 func (d *Data) recommend(me *Hero, enemies []*Hero, lane *Hero, b Build, maxSwaps int) *CalcResp {
 	V, prof := computeVotes(me, enemies, lane)
-	resp := &CalcResp{Swaps: []Swap{}, Fallback: []Scored{}, Ranking: []Scored{}, Tips: []string{}, Warnings: []string{}, Final: []string{}}
+	resp := &CalcResp{Swaps: []Swap{}, Fallback: []Scored{}, Ranking: []Scored{}, Tips: []string{}, Warnings: []string{}, Final: []string{}, Buy: []string{}}
 	resp.Profile = map[string][]string{
 		"gun": nz(prof.Gun), "spirit": nz(prof.Spirit), "cc": nz(prof.CC), "silence": nz(prof.Silence),
 		"heal": nz(prof.Heal), "slow": nz(prof.Slow), "mobile": nz(prof.Mobile), "tank": nz(prof.Tank),
@@ -988,12 +989,82 @@ func (d *Data) recommend(me *Hero, enemies []*Hero, lane *Hero, b Build, maxSwap
 			resp.Fallback = append(resp.Fallback, Scored{it.Name, round1(e.v), V.reason(e.k)})
 		}
 	}
-	for _, r := range build {
+	// Late items only fill slots as swap targets; what is shown and exported is the Tracklock core.
+	buy := buyOrder(core, resp.Swaps, d)
+	fin := finals(buy)
+	for _, r := range buy {
+		resp.Buy = append(resp.Buy, r.Name)
+	}
+	for _, r := range fin {
 		resp.Final = append(resp.Final, r.Name)
 	}
-	tot, act, _ := buildStats(build)
-	resp.Check = Check{Slots: len(build), MaxSlots: maxSlots, Actives: act, Invest: tot}
+	tot, act, _ := buildStats(fin)
+	resp.Check = Check{Slots: len(fin), MaxSlots: maxSlots, Actives: act, Invest: tot}
 	return resp
+}
+
+// compClosure adds the keys of all components of it, and of their components, to into.
+func (d *Data) compClosure(it *Item, into map[string]bool) {
+	for _, c := range it.comps {
+		if into[c] {
+			continue
+		}
+		into[c] = true
+		if ci := d.ItemMap[c]; ci != nil {
+			d.compClosure(ci, into)
+		}
+	}
+}
+
+// buyOrder: the core in purchase order, components included. A swap takes the place of the item it
+// replaces (or is appended if it replaced a Late item); components that no remaining item needs are dropped.
+func buyOrder(core []Ref, swaps []Swap, d *Data) []Ref {
+	order := append([]Ref(nil), core...)
+	removedComps := map[string]bool{}
+	for _, s := range swaps {
+		add := d.ItemMap[norm(s.Add)]
+		if add == nil {
+			continue
+		}
+		rk := norm(s.Remove)
+		if rit := d.ItemMap[rk]; rit != nil {
+			d.compClosure(rit, removedComps)
+		}
+		ref := Ref{add.Name, add.key, add}
+		replaced := false
+		for i := range order {
+			if order[i].Key == rk {
+				order[i], replaced = ref, true
+				break
+			}
+		}
+		if !replaced {
+			order = append(order, ref)
+		}
+	}
+	// Drop components of replaced items until no remaining item needs them (chains: base -> mid -> final).
+	dropped := map[string]bool{}
+	for changed := true; changed; {
+		changed = false
+		needed := map[string]bool{}
+		for _, r := range order {
+			if !dropped[r.Key] {
+				d.compClosure(r.It, needed)
+			}
+		}
+		for _, r := range order {
+			if removedComps[r.Key] && !needed[r.Key] && !dropped[r.Key] {
+				dropped[r.Key], changed = true, true
+			}
+		}
+	}
+	out := order[:0]
+	for _, r := range order {
+		if !dropped[r.Key] {
+			out = append(out, r)
+		}
+	}
+	return out
 }
 
 func earlyTips(lane *Hero) []string {
@@ -1195,7 +1266,7 @@ func main() {
 	})
 	mux.HandleFunc("/api/skills", func(w http.ResponseWriter, r *http.Request) {
 		_, info := skills.seqFor(norm(r.URL.Query().Get("hero")))
-		writeJSON(w, map[string]any{"info": info, "status": skills.Status()})
+		writeJSON(w, map[string]any{"info": info, "status": skills.Status(), "running": skills.Running()})
 	})
 	mux.HandleFunc("/api/skills/refresh", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost || r.Header.Get("X-DL") != "1" {

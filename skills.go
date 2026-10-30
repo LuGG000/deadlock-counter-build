@@ -64,6 +64,19 @@ func (s *Skills) Status() string {
 	return s.status
 }
 
+func (s *Skills) Running() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.running
+}
+
+// saveLocked writes the cache; the caller holds s.mu.
+func (s *Skills) saveLocked() {
+	if b, err := json.MarshalIndent(s.m, "", " "); err == nil {
+		_ = os.WriteFile(s.path, b, 0644)
+	}
+}
+
 func wilson(w, n uint64) float64 {
 	if n == 0 {
 		return 0
@@ -188,12 +201,15 @@ func (s *Skills) start(force bool) bool {
 	go func() {
 		ok, fail := 0, 0
 		var lastErr error
+		var keys []string
 		for key := range heroAbil {
-			hid, has := heroIDs[key]
-			if !has {
-				continue
+			if _, has := heroIDs[key]; has {
+				keys = append(keys, key)
 			}
-			e, err := s.fetchHero(key, hid)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			e, err := s.fetchHero(key, heroIDs[key])
 			s.mu.Lock()
 			if err != nil {
 				fail++
@@ -202,15 +218,16 @@ func (s *Skills) start(force bool) bool {
 				ok++
 				s.m[key] = e
 			}
-			s.status = fmt.Sprintf("Skill data: %d loaded, %d failed", ok, fail)
+			s.status = fmt.Sprintf("Skill data: %d/%d loaded, %d failed", ok, len(keys), fail)
+			if (ok+fail)%5 == 0 {
+				s.saveLocked()
+			}
 			s.mu.Unlock()
 			time.Sleep(120 * time.Millisecond)
 		}
 		s.mu.Lock()
 		if ok > 0 {
-			if b, err := json.MarshalIndent(s.m, "", " "); err == nil {
-				_ = os.WriteFile(s.path, b, 0644)
-			}
+			s.saveLocked()
 		}
 		if lastErr != nil && ok == 0 {
 			s.status = "Skill data unavailable: " + lastErr.Error()

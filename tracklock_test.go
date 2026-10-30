@@ -10,6 +10,18 @@ func img(cat, slug, alt string) string {
 	return fmt.Sprintf(`<div class="x"><img alt="%s" src="https://static.bigbrain.gg/deadlock-img/assets-api-res/images/items/%s/%s.webp" loading="lazy"/><span>I</span></div>`, alt, cat, slug)
 }
 
+// The live page splits numbers and labels with React comment markers.
+func TestParseTracklockWinRateAndMatches(t *testing.T) {
+	d, err := loadData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, _ := parseTracklockHTML(d, `<div>61.0<!-- -->% WR<!-- --> <span class="x">(<!-- -->225<!-- --> Matches)</span></div>`)
+	if b.WR != 61 || b.Matches != 225 {
+		t.Errorf("WR %v, matches %d", b.WR, b.Matches)
+	}
+}
+
 func TestParseTracklock(t *testing.T) {
 	d, err := loadData()
 	if err != nil {

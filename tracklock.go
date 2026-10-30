@@ -41,7 +41,9 @@ var (
 	reSlug    = regexp.MustCompile(`/images/items/[a-z_]+/([a-z0-9_]+)\.(?:webp|png|jpg|svg)`)
 	reSection = regexp.MustCompile(`(?i)^(core(?: build)?|early(?: game)?|late(?: game)?|defensives?|counter picks?|actives?)\b`)
 	reWR      = regexp.MustCompile(`(?i)(\d{2}(?:\.\d+)?)\s*%\s*(?:win rate|wr)?`)
+	reWRLabel = regexp.MustCompile(`(?i)\b(?:win rate|wr)\b`)
 	reMatches = regexp.MustCompile(`(?i)([\d.,]+)\s*(?:matches|games)`)
+	reComment = regexp.MustCompile(`(?s)<!--.*?-->`)
 )
 
 func heroSlugs(name string) []string {
@@ -88,6 +90,11 @@ func (d *Data) resolveItem(alt, slug string) *Item {
 
 // parseTracklockHTML reads the sections of a build page's HTML. Returns unresolved items.
 func parseTracklockHTML(d *Data, page string) (b tlBuild, unresolved []string) {
+	// React inserts <!-- --> between text parts ("61.0<!-- -->% WR"), which splits numbers from their labels.
+	page = reComment.ReplaceAllString(page, "")
+	if wm := reMatches.FindStringSubmatch(page); wm != nil {
+		b.Matches, _ = strconv.Atoi(strings.NewReplacer(",", "", ".", "").Replace(wm[1]))
+	}
 	section := ""
 	seen := map[string]bool{}
 	add := func(sec string, it *Item) {
@@ -129,7 +136,7 @@ func parseTracklockHTML(d *Data, page string) (b tlBuild, unresolved []string) {
 				}
 			}
 			if b.WR == 0 {
-				if wm := reWR.FindStringSubmatch(t); wm != nil && strings.Contains(strings.ToLower(t), "win") {
+				if wm := reWR.FindStringSubmatch(t); wm != nil && reWRLabel.MatchString(t) {
 					b.WR, _ = strconv.ParseFloat(wm[1], 64)
 				}
 			}
@@ -258,10 +265,6 @@ func applyTracklock(d *Data) {
 						log.Printf("Tracklock %s: unknown items ignored: %s", h.Name, strings.Join(unres, ", "))
 					}
 					b.At = time.Now().Unix()
-					if wm := reMatches.FindStringSubmatch(page); wm != nil {
-						n, _ := strconv.Atoi(strings.NewReplacer(",", "", ".", "").Replace(wm[1]))
-						b.Matches = n
-					}
 					mu.Lock()
 					cache[h.Name] = b
 					ok++

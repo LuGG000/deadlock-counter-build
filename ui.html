@@ -265,21 +265,21 @@ function renderAnalysis(r){
   return h;
 }
 const expHtml=()=>`<div class="exp" style="margin-top:12px"><button id="bExp" class="primary">Export build for the game</button> <span id="expmsg" class="kv"></span><textarea id="expout" readonly rows="3" style="display:none;width:100%;margin-top:6px;font:11px monospace"></textarea></div>`;
-function finalOrder(r){
-  const F=new Set(r.final);const seen=new Set();const out=[];
-  [...S.build.core,...S.build.late].forEach(n=>{const f=S.repl[n]||n;if(F.has(f)&&!seen.has(f)){seen.add(f);out.push({name:f,from:S.repl[n]?n:''});}});
-  r.final.forEach(f=>{if(!seen.has(f)){seen.add(f);out.push({name:f,from:''});}});
-  return out;
+// Core in Tracklock purchase order (components included); from = the item a counter swap replaces.
+function buyList(r){
+  const rep={};r.swaps.forEach(s=>{rep[s.add]=s.remove;});
+  return r.buy.map(n=>({name:n,from:rep[n]||''}));
 }
 function renderOrder(r){
   if(r.ranking.length) return '<p class="hint">No build set yet - add items on the left.</p>';
-  const L=finalOrder(r);let tot=0;
+  const L=buyList(r);
+  const tot=r.final.reduce((a,n)=>a+(S.items[n]?S.items[n].cost:0),0);
   let h='<div class="ord">';
   L.forEach((x,i)=>{
-    const it=S.items[x.name];tot+=it?it.cost:0;
+    const it=S.items[x.name];
     h+=`<div class="st ${x.from?'nw':''} c-${it?it.cat[0]:'X'}"><span class="no">${i+1}</span><span>${x.from?`<em>${esc(x.from)}</em>`:''}${iic(x.name)}${esc(x.name)}</span><span><small>${it?it.cost:'?'}</small></span></div>`;
   });
-  h+=`</div><p class="kv" style="margin-top:10px">Final build: ${L.length}/12 slots · ${tot} souls · buy from left to right · green = counter swap (replaces the struck-through item). Early lane items are not included.</p>`;
+  h+=`</div><p class="kv" style="margin-top:10px">Core build in purchase order (components included, as on Tracklock) · ${r.final.length}/12 slots once upgraded · ${tot} souls · green = counter swap (replaces the struck-through item). Early lane items are not included.</p>`;
   h+=`<h2 style="margin-top:12px">Skill order</h2><div id="skl" class="kv">loading…</div>`;
   return h+expHtml();
 }
@@ -288,8 +288,9 @@ async function loadSkills(){
   try{
     const r=await api('/api/skills?hero='+encodeURIComponent(S.me));const i=r.info;
     const tags=(i.steps||[]).map((n,k)=>`<span class="it" style="margin:2px"><small>${k+1}</small> ${esc(n)}</span>`).join('');
-    const head=i.source==='live'?`<p class="kv">From real match data (deadlock-api): best win-rate order, ${i.matches} matches, ${i.wr} % win rate.</p>`:`<p class="warn">No live data loaded - this is only a fallback template, not from match data. ${esc(r.status||'')}</p>`;
+    const head=i.source==='live'?`<p class="kv">From real match data (deadlock-api): best win-rate order, ${i.matches} matches, ${i.wr} % win rate.</p>`:r.running?`<p class="kv">Loading skill data from match data... ${esc(r.status||'')}</p>`:`<p class="warn">No live data loaded - this is only a fallback template, not from match data. ${esc(r.status||'')}</p>`;
     const el2=$('#skl');if(el2)el2.innerHTML=head+tags;
+    if(r.running&&i.source!=='live')setTimeout(loadSkills,2000);
   }catch(e){const el2=$('#skl');if(el2)el2.textContent='Error: '+e.message;}
 }
 function renderResult(r){
@@ -317,12 +318,11 @@ async function calc(){
 /* ---------- Events ---------- */
 async function doExport(){
   const r0=S.last;if(!r0||!S.me)return;
-  const L=finalOrder(r0);
-  const inFinal=new Set(L.map(x=>x.name));
+  const inFinal=new Set(r0.buy);
   const gone=new Set(Object.keys(S.repl));
   const notes={};
   r0.swaps.forEach(s=>{notes[s.add]='Counter: '+s.why;});
-  const build={core:L.map(x=>x.name),early:S.build.early.filter(n=>!inFinal.has(n)),
+  const build={core:r0.buy,early:S.build.early.filter(n=>!inFinal.has(n)),
     late:S.build.late.filter(n=>!inFinal.has(n)&&!gone.has(n))};
   const counter=(r0.fallback||[]).map(x=>x.item).filter(n=>!inFinal.has(n));
   const en=S.enemies.filter(Boolean);

@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestUnreachableHero(t *testing.T) {
 	d, err := loadData()
@@ -86,6 +89,64 @@ func TestAllHeroesComplete(t *testing.T) {
 		}
 		for _, w := range r.Warnings {
 			t.Errorf("%s: warning %s", h.Name, w)
+		}
+	}
+}
+
+// The shown/exported core is the Tracklock purchase order of every hero; swaps replace in place.
+func TestBuyOrderAllHeroes(t *testing.T) {
+	d, err := loadData()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range d.Heroes {
+		var en []*Hero
+		for _, o := range d.Heroes {
+			if o != h && len(en) < 6 {
+				en = append(en, o)
+			}
+		}
+		var want []string
+		for _, n := range h.Catalog.Core {
+			want = append(want, norm(n))
+		}
+		inCore := map[string]bool{}
+		for _, k := range want {
+			inCore[k] = true
+		}
+
+		plain := d.recommend(h, en, nil, h.Catalog, 0)
+		var got []string
+		for _, n := range plain.Buy {
+			got = append(got, norm(n))
+		}
+		if strings.Join(got, ",") != strings.Join(want, ",") {
+			t.Errorf("%s: buy order differs from the Tracklock core\n got %v\nwant %v", h.Name, got, want)
+		}
+
+		swapped := d.recommend(h, en, nil, h.Catalog, 3)
+		inBuy := map[string]bool{}
+		needed := map[string]bool{}
+		for _, n := range swapped.Buy {
+			inBuy[norm(n)] = true
+			d.compClosure(d.ItemMap[norm(n)], needed)
+		}
+		for _, s := range swapped.Swaps {
+			if !inBuy[norm(s.Add)] {
+				t.Errorf("%s: swap item %s missing from the buy order", h.Name, s.Add)
+			}
+			if inBuy[norm(s.Remove)] {
+				t.Errorf("%s: replaced item %s still in the buy order", h.Name, s.Remove)
+			}
+			if rit := d.ItemMap[norm(s.Remove)]; rit != nil {
+				removed := map[string]bool{}
+				d.compClosure(rit, removed)
+				for c := range removed {
+					if inBuy[c] && !needed[c] {
+						t.Errorf("%s: orphaned component %s of %s kept", h.Name, c, s.Remove)
+					}
+				}
+			}
 		}
 	}
 }
