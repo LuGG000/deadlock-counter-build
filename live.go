@@ -7,10 +7,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"html"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +24,7 @@ type liveItem struct {
 	Tier  int    `json:"tier"`
 	Cost  int    `json:"cost"`
 	Slot  string `json:"slot"` // W / V / S
+	Tip   string `json:"tip"`  // stats and description for the hover tooltip
 }
 type liveHero struct {
 	ID    uint32   `json:"id"`
@@ -37,7 +40,56 @@ type liveCache struct {
 
 var syncStatus = "Live sync: not run"
 
-var reDigits = regexp.MustCompile(`\d+`)
+var (
+	reDigits = regexp.MustCompile(`\d+`)
+	reTags   = regexp.MustCompile(`(?s)<[^>]*>`)
+)
+
+// liveTip builds the hover text like the snapshot does: "Label value, ..." | description.
+func liveTip(o map[string]any) string {
+	var stats []string
+	if props, ok := o["properties"].(map[string]any); ok {
+		keys := make([]string, 0, len(props))
+		for k := range props {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		seen := map[string]bool{}
+		for _, k := range keys {
+			p, _ := props[k].(map[string]any)
+			label, _ := p["label"].(string)
+			val := strings.TrimSpace(fmt.Sprint(p["value"]))
+			if label == "" || label == "Charge Delay" || val == "" || val == "0" || val == "<nil>" {
+				continue
+			}
+			if post, _ := p["postfix"].(string); post != "" && !strings.HasSuffix(val, post) {
+				val += post
+			}
+			if s := label + " " + val; !seen[s] {
+				seen[s] = true
+				stats = append(stats, s)
+			}
+		}
+	}
+	tip := strings.Join(stats, ", ")
+	if desc, ok := o["description"].(map[string]any); ok {
+		for _, k := range []string{"desc", "passive", "active"} {
+			s, _ := desc[k].(string)
+			s = strings.Join(strings.Fields(html.UnescapeString(reTags.ReplaceAllString(s, ""))), " ")
+			if s == "" {
+				continue
+			}
+			if r := []rune(s); len(r) > 240 {
+				s = string(r[:240]) + "…"
+			}
+			if tip != "" {
+				tip += " | "
+			}
+			return tip + s
+		}
+	}
+	return tip
+}
 
 func anyInt(v any) int {
 	switch t := v.(type) {
@@ -82,7 +134,7 @@ func parseLiveItems(list []map[string]any) []liveItem {
 		if b, ok := o["disabled"].(bool); ok && b {
 			continue
 		}
-		it := liveItem{Class: cls, Name: anyStr(o, "name"), Slot: slotOf(anyStr(o, "item_slot_type", "slot_type", "slot"))}
+		it := liveItem{Class: cls, Name: anyStr(o, "name"), Slot: slotOf(anyStr(o, "item_slot_type", "slot_type", "slot")), Tip: liveTip(o)}
 		for _, k := range []string{"item_tier", "tier"} {
 			if v, ok := o[k]; ok && anyInt(v) > 0 {
 				it.Tier = anyInt(v)
@@ -124,7 +176,8 @@ func syncLive(d *Data, ic *Icons) {
 	if b, err := os.ReadFile(path); err == nil {
 		_ = json.Unmarshal(b, &c)
 	}
-	fresh := c.At > 0 && time.Now().Unix()-c.At < 24*3600 && len(c.Items) > 0
+	// A cache written before tooltips were synced has no Tip yet and counts as stale.
+	fresh := c.At > 0 && time.Now().Unix()-c.At < 24*3600 && len(c.Items) > 0 && c.Items[0].Tip != ""
 	note := "Cache"
 	if !fresh && ic != nil && ic.enabled {
 		old := ic.client.Timeout
@@ -173,6 +226,9 @@ func syncLive(d *Data, ic *Icons) {
 			if ch {
 				upd++
 			}
+			if li.Tip != "" {
+				it.Tip = li.Tip
+			}
 			continue
 		}
 		if li.Name == "" || li.Tier == 0 || li.Cost == 0 || li.Slot == "" {
@@ -185,6 +241,9 @@ func syncLive(d *Data, ic *Icons) {
 		cat := map[string]string{"W": "Weapon", "V": "Vitality", "S": "Spirit"}[li.Slot]
 		it := &Item{Name: li.Name, IName: li.Class, Cat: cat, Tier: li.Tier, Cost: li.Cost, key: key, grp: -1, ci: -1,
 			Tip: "New item (loaded automatically) - not yet in the scoring"}
+		if li.Tip != "" {
+			it.Tip = li.Tip + " | new item, not yet in the scoring"
+		}
 		if ci, ok := catIdx[cat]; ok {
 			it.ci = ci
 		}
