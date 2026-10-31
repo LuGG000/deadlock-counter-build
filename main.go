@@ -609,7 +609,7 @@ func computeVotes(me *Hero, enemies []*Hero, lane *Hero) (*Votes, *Profile) {
 		txt := fmt.Sprintf("%d tank/resist heroes", len(prof.Tank))
 		if gunHero {
 			V.rule("Bullet Resist Shredder", 2, txt)
-			V.rule("Hunter's Aura", 1.5, txt)
+			V.rule("Hunter's Aura", 1, txt)
 		} else {
 			V.rule("Mystic Vulnerability", 2, txt)
 			V.rule("Escalating Exposure", 1.5, txt)
